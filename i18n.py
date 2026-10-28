@@ -123,8 +123,8 @@ TEXTS = {
 }
 
 
-def t(lang, key, **kw):
-    s = TEXTS.get(lang, {}).get(key) or TEXTS["uz"][key]
+def t(language, key, **kw):
+    s = TEXTS.get(language, {}).get(key) or TEXTS["uz"][key]
     return s.format(**kw) if kw else s
 
 
