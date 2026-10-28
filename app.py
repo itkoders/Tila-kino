@@ -67,7 +67,7 @@ def public_movie(m, with_eps=True):
 
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__, template_folder=".")
     app.config["JSON_AS_ASCII"] = False
     state = {"db_ok": init_database()}
 
