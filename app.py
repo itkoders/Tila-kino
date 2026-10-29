@@ -3,6 +3,7 @@
 Gunicorn:  gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4"""
 import hmac
 import logging
+import os
 import threading
 
 from flask import Flask, Response, abort, jsonify, render_template, request
@@ -67,7 +68,7 @@ def public_movie(m, with_eps=True):
 
 
 def create_app():
-    app = Flask(__name__, template_folder=".")
+    app = Flask(__name__, template_folder=os.path.dirname(os.path.abspath(__file__)))
     app.config["JSON_AS_ASCII"] = False
     state = {"db_ok": init_database()}
 
