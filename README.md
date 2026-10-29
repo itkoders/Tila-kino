@@ -53,7 +53,7 @@ seriallar, 4 tilli interfeys, animatsiyali bot va sayt.
    Katta fayllar uchun **🔗 havola** (https) ham qo'shish mumkin — saytda ko'rinadi.
 4. Faqat o'zingizga tegishli yoki tarqatishga ruxsat berilgan kontentni yuklang.
 
-## Animatsiyalar
+## Kirish GIF animatsiyasini sozlash\nTelegramda botga GIF animatsiyasini yuboring va caption (izoh) qatoriga `/setwelcome` deb yozing. Buni faqat admin qila oladi. Bot GIF `file_id` qiymatini ma'lumotlar bazasida saqlaydi; GIF yuklanmasa, matnli animatsiyaga qaytadi.\n\n## Animatsiyalar
 - Botda: `/start` da yozilib chiqadigan TILAKINO, tomosha oldidan progress-bar, sahifalar xabarni joyida yangilanadi.
 - Saytda: kartalar ketma-ket paydo bo'lishi, poster yuklanguncha shimmer, hover effekti, player va epizodlar animatsiyasi;
   `prefers-reduced-motion` yoqilgan qurilmalarda o'chadi.
