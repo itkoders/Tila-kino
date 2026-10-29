@@ -281,16 +281,21 @@ def _migrate_existing_schema():
                 source = "watched_at" if table == "history" else ("at" if table == "audit_log" else None)
                 if source and source in existing:
                     t.exec(f"UPDATE {table} SET created_at=COALESCE(created_at, {source})")
-        if not IS_PG:
-            t.exec("CREATE UNIQUE INDEX IF NOT EXISTS ux_users_id_compat ON users(id)")
+        # Legacy users jadvalida id qo'shilgan bo'lsa ham, ON CONFLICT(id)
+        # ishlashi uchun ikkala DB turida ham unique index kerak.
+        t.exec("CREATE UNIQUE INDEX IF NOT EXISTS ux_users_id_compat ON users(id)")
 
 
 def init_schema():
-    """Jadvallarni yaratadi va eski deploy sxemasini migratsiya qiladi."""
+    """Jadvallarni yaratadi, eski sxemani migratsiya qiladi, so'ng indekslarni tiklaydi."""
     pk = "SERIAL PRIMARY KEY" if IS_PG else "INTEGER PRIMARY KEY AUTOINCREMENT"
     with _lock:
+        # Eski jadvalda indeks ustuni hali bo'lmasligi mumkin. Shu sababli
+        # avval jadvallar, keyin migratsiya, eng oxirida indekslar yaratiladi.
+        table_statements = [x for x in _DDL if not x.lstrip().upper().startswith("CREATE INDEX")]
+        index_statements = [x for x in _DDL if x.lstrip().upper().startswith("CREATE INDEX")]
         with tx() as t:
-            for stmt in _DDL:
+            for stmt in table_statements:
                 t.exec(stmt.replace("{PK}", pk))
             t.exec(
                 "INSERT INTO settings(key,value) VALUES('schema_version',?) "
@@ -298,6 +303,9 @@ def init_schema():
                 (str(SCHEMA_VERSION),),
             )
         _migrate_existing_schema()
+        with tx() as t:
+            for stmt in index_statements:
+                t.exec(stmt)
 
 
 def drop_all_for_tests():
