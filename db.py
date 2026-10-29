@@ -54,6 +54,14 @@ _DDL = [
     "CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT)",
     """CREATE TABLE IF NOT EXISTS sponsors(
         id {PK}, text TEXT NOT NULL, url TEXT, enabled INTEGER DEFAULT 1, created_at BIGINT)""",
+    """CREATE TABLE IF NOT EXISTS promo_codes(
+        id {PK}, code TEXT NOT NULL UNIQUE, premium_days INTEGER NOT NULL,
+        max_uses INTEGER NOT NULL DEFAULT 1, used_count INTEGER NOT NULL DEFAULT 0,
+        enabled INTEGER DEFAULT 1, created_by BIGINT, created_at BIGINT)""",
+    """CREATE TABLE IF NOT EXISTS promo_redemptions(
+        id {PK}, code_id INTEGER NOT NULL REFERENCES promo_codes(id),
+        user_id BIGINT NOT NULL REFERENCES users(id), redeemed_at BIGINT,
+        UNIQUE(code_id, user_id))""",
     """CREATE TABLE IF NOT EXISTS broadcasts(
         id {PK}, admin_id BIGINT, src_chat BIGINT, src_msg BIGINT, status TEXT DEFAULT 'draft',
         total INTEGER DEFAULT 0, sent INTEGER DEFAULT 0, failed INTEGER DEFAULT 0, skipped INTEGER DEFAULT 0,
@@ -311,5 +319,5 @@ def init_schema():
 def drop_all_for_tests():
     for name in ("history", "favorites", "video_variants", "episodes", "subscriptions", "payments",
                  "movies", "users", "admins", "settings", "sponsors", "broadcasts", "audit_log",
-                 "user_state", "processed_updates"):
+                 "user_state", "processed_updates", "promo_redemptions", "promo_codes"):
         execute("DROP TABLE IF EXISTS " + name)
