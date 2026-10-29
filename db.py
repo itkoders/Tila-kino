@@ -19,7 +19,7 @@ _DDL = [
         id BIGINT PRIMARY KEY, first_name TEXT, username TEXT, lang TEXT DEFAULT 'uz',
         joined_at BIGINT, last_seen BIGINT, blocked INTEGER DEFAULT 0, bot_blocked INTEGER DEFAULT 0,
         premium_until BIGINT DEFAULT 0, remind3_for BIGINT DEFAULT 0, remind0_for BIGINT DEFAULT 0,
-        referrer_id BIGINT, ref_count INTEGER DEFAULT 0, last_sponsor_at BIGINT DEFAULT 0)""",
+        referrer_id BIGINT, ref_count INTEGER DEFAULT 0, last_sponsor_at BIGINT DEFAULT 0, created_at BIGINT)""",
     """CREATE TABLE IF NOT EXISTS movies(
         id {PK}, code TEXT NOT NULL UNIQUE, kind TEXT NOT NULL DEFAULT 'movie', title TEXT NOT NULL,
         poster_file_id TEXT, year INTEGER, country TEXT, genre TEXT, language TEXT, description TEXT,
@@ -154,13 +154,50 @@ def execute(sql, args=()):
         return t.exec(sql, args)
 
 
+def _migrate_legacy_users():
+    """Eski SQLite sxemasidagi telegram_id/created_at ustunlarini moslaydi."""
+    if IS_PG:
+        return
+    conn = _connect()
+    try:
+        exists = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='users'").fetchone()
+        if not exists:
+            return
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
+        if "id" not in cols and "telegram_id" in cols:
+            conn.execute("ALTER TABLE users ADD COLUMN id BIGINT")
+            conn.execute("UPDATE users SET id=telegram_id WHERE id IS NULL")
+            cols.add("id")
+        if "joined_at" not in cols and "created_at" in cols:
+            conn.execute("ALTER TABLE users ADD COLUMN joined_at BIGINT")
+            conn.execute("UPDATE users SET joined_at=created_at WHERE joined_at IS NULL")
+            cols.add("joined_at")
+        defaults = {
+            "first_name": "TEXT", "username": "TEXT", "lang": "TEXT DEFAULT 'uz'",
+            "joined_at": "BIGINT", "last_seen": "BIGINT", "blocked": "INTEGER DEFAULT 0",
+            "bot_blocked": "INTEGER DEFAULT 0", "premium_until": "BIGINT DEFAULT 0",
+            "remind3_for": "BIGINT DEFAULT 0", "remind0_for": "BIGINT DEFAULT 0",
+            "referrer_id": "BIGINT", "ref_count": "INTEGER DEFAULT 0",
+            "last_sponsor_at": "BIGINT DEFAULT 0", "created_at": "BIGINT"
+        }
+        for col, spec in defaults.items():
+            if col not in cols:
+                conn.execute("ALTER TABLE users ADD COLUMN " + col + " " + spec)
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_users_id_compat ON users(id)")
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def init_schema():
     pk = "SERIAL PRIMARY KEY" if IS_PG else "INTEGER PRIMARY KEY AUTOINCREMENT"
-    with _lock, tx() as t:
-        for stmt in _DDL:
-            t.exec(stmt.replace("{PK}", pk))
-        t.exec("INSERT INTO settings(key,value) VALUES('schema_version',?) "
-               "ON CONFLICT(key) DO NOTHING", (str(SCHEMA_VERSION),))
+    with _lock:
+        _migrate_legacy_users()
+        with tx() as t:
+            for stmt in _DDL:
+                t.exec(stmt.replace("{PK}", pk))
+            t.exec("INSERT INTO settings(key,value) VALUES('schema_version',?) "
+                   "ON CONFLICT(key) DO NOTHING", (str(SCHEMA_VERSION),))
 
 
 def drop_all_for_tests():
