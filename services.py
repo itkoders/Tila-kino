@@ -845,5 +845,10 @@ def claim_update(update_id):
                       (update_id, now())) == 1
 
 
+def release_update(update_id):
+    """Ishlov berishdan oldin xato chiqqan update'ni qayta urinish uchun bo'shatadi."""
+    return db.execute("DELETE FROM processed_updates WHERE update_id=?", (update_id,)) > 0
+
+
 def cleanup_updates(older_than=3 * 86400):
     return db.execute("DELETE FROM processed_updates WHERE at<?", (now() - older_than,))
