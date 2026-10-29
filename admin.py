@@ -527,7 +527,7 @@ def cb_sub(ctx, a):
     channel = (sv.get_setting("mandatory_channel") or "").strip()
     state = "YOQILGAN" if channel else "O'CHIRILGAN"
     show(ctx.chat, ctx.msg,
-         "🔒 <b>Majburiy obuna</b>\\nHolati: <b>" + state + "</b>\\nKanal: <code>" + esc(channel or "sozlanmagan") + "</code>\\n\\n"
+         "🔒 <b>Majburiy obuna</b>\nHolati: <b>" + state + "</b>\nKanal: <code>" + esc(channel or "sozlanmagan") + "</code>\n\n"
          "Kanalni ulash uchun «Kanalni sozlash»ni bosing va kanal username'ini yuboring (masalan <code>@TilaKino</code>). "
          "O'chirish uchun «O'chirish»ni bosing. Bot kanal administrator bo'lishi shart.",
          ikb([[("✏️ Kanalni sozlash", "a:subset")],
