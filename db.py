@@ -86,15 +86,32 @@ def _connect():
     if IS_PG:
         import psycopg2
         import psycopg2.extras
-        return psycopg2.connect(_url, cursor_factory=psycopg2.extras.RealDictCursor)
+        return psycopg2.connect(
+            _url,
+            cursor_factory=psycopg2.extras.RealDictCursor,
+            connect_timeout=15,
+        )
+
     path = _url.replace("sqlite:///", "", 1) if _url.startswith("sqlite:///") else _url
-    con = sqlite3.connect(path, timeout=30)
+    if not path:
+        raise RuntimeError("DATABASE_URL SQLite manzili bo'sh")
+    # SQLite papkasi mavjud bo'lmasa, ulanishdan oldin yaratish.
+    # :memory: va URI rejimlari fayl papkasini talab qilmaydi.
+    if path != ":memory:" and not path.startswith("file:"):
+        import os
+        parent = os.path.dirname(os.path.abspath(path))
+        os.makedirs(parent, exist_ok=True)
+
+    con = sqlite3.connect(path, timeout=30, check_same_thread=False, uri=path.startswith("file:"))
     con.row_factory = sqlite3.Row
     con.execute("PRAGMA foreign_keys=ON")
-    try:
-        con.execute("PRAGMA journal_mode=WAL")
-    except sqlite3.DatabaseError:
-        pass
+    con.execute("PRAGMA busy_timeout=30000")
+    # WAL diskka yozishni talab qiladi; xato bo'lsa DB ulanishini yiqitmaymiz.
+    if path != ":memory:" and not path.startswith("file::memory:"):
+        try:
+            con.execute("PRAGMA journal_mode=WAL")
+        except sqlite3.DatabaseError:
+            pass
     return con
 
 
@@ -154,54 +171,133 @@ def execute(sql, args=()):
         return t.exec(sql, args)
 
 
-def _migrate_legacy_users():
-    """Eski SQLite sxemasidagi telegram_id/created_at ustunlarini moslaydi."""
+def _table_columns(t, table):
+    """Mavjud jadval ustunlarini SQLite/PostgreSQL uchun bir xil qaytaradi."""
     if IS_PG:
-        with tx() as t:
-            found = t.one("SELECT 1 AS x FROM information_schema.tables WHERE table_schema=current_schema() AND table_name='users'")
-            if found:
-                t.exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at BIGINT")
-        return
-    conn = _connect()
-    try:
-        exists = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='users'").fetchone()
-        if not exists:
-            return
-        cols = {r[1] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
-        if "id" not in cols and "telegram_id" in cols:
-            conn.execute("ALTER TABLE users ADD COLUMN id BIGINT")
-            conn.execute("UPDATE users SET id=telegram_id WHERE id IS NULL")
+        rows = t.q(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_schema=current_schema() AND table_name=?",
+            (table,),
+        )
+        return {r["column_name"] for r in rows}
+    return {r["name"] for r in t.q("PRAGMA table_info(" + table + ")")}
+
+
+# Eski deploylarda CREATE TABLE IF NOT EXISTS jadvalni yangilamaydi.
+# Shu xarita mavjud jadvallarga keyingi kod kutadigan ustunlarni xavfsiz qo'shadi.
+_MIGRATION_COLUMNS = {
+    "users": {
+        "id": "BIGINT", "first_name": "TEXT", "username": "TEXT",
+        "lang": "TEXT DEFAULT 'uz'", "joined_at": "BIGINT", "last_seen": "BIGINT",
+        "blocked": "INTEGER DEFAULT 0", "bot_blocked": "INTEGER DEFAULT 0",
+        "premium_until": "BIGINT DEFAULT 0", "remind3_for": "BIGINT DEFAULT 0",
+        "remind0_for": "BIGINT DEFAULT 0", "referrer_id": "BIGINT",
+        "ref_count": "INTEGER DEFAULT 0", "last_sponsor_at": "BIGINT DEFAULT 0",
+        "created_at": "BIGINT",
+    },
+    "movies": {
+        "code": "TEXT", "kind": "TEXT DEFAULT 'movie'", "title": "TEXT",
+        "poster_file_id": "TEXT", "year": "INTEGER", "country": "TEXT",
+        "genre": "TEXT", "language": "TEXT", "description": "TEXT",
+        "rating": "REAL", "published": "INTEGER DEFAULT 1", "views": "INTEGER DEFAULT 0",
+        "created_at": "BIGINT",
+    },
+    "episodes": {
+        "series_id": "INTEGER", "season": "INTEGER DEFAULT 1", "number": "INTEGER DEFAULT 1",
+        "title": "TEXT", "description": "TEXT", "published": "INTEGER DEFAULT 1",
+        "views": "INTEGER DEFAULT 0", "created_at": "BIGINT",
+    },
+    "video_variants": {
+        "movie_id": "INTEGER", "episode_id": "INTEGER", "quality": "TEXT DEFAULT 'medium'",
+        "label": "TEXT", "file_id": "TEXT", "ftype": "TEXT", "external_url": "TEXT",
+        "created_at": "BIGINT",
+    },
+    "favorites": {"user_id": "BIGINT", "movie_id": "INTEGER", "created_at": "BIGINT"},
+    "history": {
+        "user_id": "BIGINT", "movie_id": "INTEGER", "episode_id": "INTEGER", "watched_at": "BIGINT",
+    },
+    "payments": {
+        "user_id": "BIGINT", "plan_key": "TEXT", "days": "INTEGER", "amount": "INTEGER",
+        "status": "TEXT DEFAULT 'pending'", "reference": "TEXT", "proof_file_id": "TEXT",
+        "provider": "TEXT", "provider_txn": "TEXT", "created_at": "BIGINT",
+        "decided_at": "BIGINT", "decided_by": "BIGINT",
+    },
+    "subscriptions": {
+        "user_id": "BIGINT", "days": "INTEGER", "starts_at": "BIGINT", "expires_at": "BIGINT",
+        "source": "TEXT", "payment_id": "INTEGER", "active": "INTEGER DEFAULT 1",
+    },
+    "admins": {"user_id": "BIGINT", "role": "TEXT", "perms": "TEXT", "added_by": "BIGINT", "added_at": "BIGINT"},
+    "settings": {"key": "TEXT", "value": "TEXT"},
+    "sponsors": {"text": "TEXT", "url": "TEXT", "enabled": "INTEGER DEFAULT 1", "created_at": "BIGINT"},
+    "broadcasts": {
+        "admin_id": "BIGINT", "src_chat": "BIGINT", "src_msg": "BIGINT",
+        "status": "TEXT DEFAULT 'draft'", "total": "INTEGER DEFAULT 0",
+        "sent": "INTEGER DEFAULT 0", "failed": "INTEGER DEFAULT 0",
+        "skipped": "INTEGER DEFAULT 0", "created_at": "BIGINT",
+    },
+    "audit_log": {"admin_id": "BIGINT", "action": "TEXT", "details": "TEXT", "at": "BIGINT"},
+    "user_state": {"user_id": "BIGINT", "state": "TEXT", "data": "TEXT"},
+    "processed_updates": {"update_id": "BIGINT", "at": "BIGINT"},
+}
+
+
+def _migrate_existing_schema():
+    """Eski sxemalarni yo'qotishsiz kengaytiradi; jadvallar yoki yozuvlarni o'chirmaydi."""
+    with tx() as t:
+        # Eski users sxemasida telegram_id ishlatilgan bo'lishi mumkin.
+        cols = _table_columns(t, "users")
+        if "telegram_id" in cols and "id" not in cols:
+            if IS_PG:
+                t.exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS id BIGINT")
+            else:
+                t.exec("ALTER TABLE users ADD COLUMN id BIGINT")
             cols.add("id")
-        if "joined_at" not in cols and "created_at" in cols:
-            conn.execute("ALTER TABLE users ADD COLUMN joined_at BIGINT")
-            conn.execute("UPDATE users SET joined_at=created_at WHERE joined_at IS NULL")
-            cols.add("joined_at")
-        defaults = {
-            "first_name": "TEXT", "username": "TEXT", "lang": "TEXT DEFAULT 'uz'",
-            "joined_at": "BIGINT", "last_seen": "BIGINT", "blocked": "INTEGER DEFAULT 0",
-            "bot_blocked": "INTEGER DEFAULT 0", "premium_until": "BIGINT DEFAULT 0",
-            "remind3_for": "BIGINT DEFAULT 0", "remind0_for": "BIGINT DEFAULT 0",
-            "referrer_id": "BIGINT", "ref_count": "INTEGER DEFAULT 0",
-            "last_sponsor_at": "BIGINT DEFAULT 0", "created_at": "BIGINT"
-        }
-        for col, spec in defaults.items():
-            if col not in cols:
-                conn.execute("ALTER TABLE users ADD COLUMN " + col + " " + spec)
-        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_users_id_compat ON users(id)")
-        conn.commit()
-    finally:
-        conn.close()
+        if "telegram_id" in cols and "id" in cols:
+            t.exec("UPDATE users SET id=telegram_id WHERE id IS NULL")
+        if "created_at" in cols and "joined_at" not in cols:
+            if IS_PG:
+                t.exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS joined_at BIGINT")
+            else:
+                t.exec("ALTER TABLE users ADD COLUMN joined_at BIGINT")
+            t.exec("UPDATE users SET joined_at=created_at WHERE joined_at IS NULL")
+
+        for table, columns in _MIGRATION_COLUMNS.items():
+            existing = _table_columns(t, table)
+            for column, definition in columns.items():
+                if column in existing:
+                    continue
+                if IS_PG:
+                    t.exec(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {definition}")
+                else:
+                    t.exec(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+            # Eski ma'lumotlardan mavjud vaqt ustunlarini to'ldirish.
+            existing = _table_columns(t, table)
+            if table == "users":
+                if "created_at" in existing and "joined_at" in existing:
+                    t.exec("UPDATE users SET joined_at=COALESCE(joined_at, created_at)")
+                if "joined_at" in existing and "created_at" in existing:
+                    t.exec("UPDATE users SET created_at=COALESCE(created_at, joined_at)")
+            elif "created_at" in existing:
+                source = "watched_at" if table == "history" else ("at" if table == "audit_log" else None)
+                if source and source in existing:
+                    t.exec(f"UPDATE {table} SET created_at=COALESCE(created_at, {source})")
+        if not IS_PG:
+            t.exec("CREATE UNIQUE INDEX IF NOT EXISTS ux_users_id_compat ON users(id)")
 
 
 def init_schema():
+    """Jadvallarni yaratadi va eski deploy sxemasini migratsiya qiladi."""
     pk = "SERIAL PRIMARY KEY" if IS_PG else "INTEGER PRIMARY KEY AUTOINCREMENT"
     with _lock:
-        _migrate_legacy_users()
         with tx() as t:
             for stmt in _DDL:
                 t.exec(stmt.replace("{PK}", pk))
-            t.exec("INSERT INTO settings(key,value) VALUES('schema_version',?) "
-                   "ON CONFLICT(key) DO NOTHING", (str(SCHEMA_VERSION),))
+            t.exec(
+                "INSERT INTO settings(key,value) VALUES('schema_version',?) "
+                "ON CONFLICT(key) DO NOTHING",
+                (str(SCHEMA_VERSION),),
+            )
+        _migrate_existing_schema()
 
 
 def drop_all_for_tests():
