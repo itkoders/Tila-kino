@@ -136,6 +136,17 @@ def on_command(m, u, created, text):
                              "Masalan: GIF tanlang → caption: /setwelcome")
         sv.set_setting("welcome_gif_file_id", animation["file_id"])
         return send(uid, "✅ TILAKINO kirish GIF'i saqlandi. Keyingi /start da ishlatiladi.")
+    if cmd == "/promo":
+        if not payload:
+            return send(uid, "🎟 Promo-kodni ishlatish: <code>/promo KOD</code>")
+        try:
+            result = sv.redeem_promo_code(uid, payload)
+        except ValueError as e:
+            if str(e) == "promo_used":
+                return send(uid, "⚠️ Bu promo-koddan oldin foydalangansiz.")
+            return send(uid, "❌ Promo-kod noto'g'ri yoki limiti to'lgan.")
+        sv.audit(uid, "promo_redeem", f"{result['code']}:{uid}")
+        return send(uid, f"🎉 Promo-kod qabul qilindi!\n💎 Premium: +{result['days']} kun\n📅 Tugash: {sv.fmt_dt(result['expires_at'])}", main_menu_for(lg))
     if cmd == "/admin":
         if not sv.is_admin(uid):
             return send(uid, "⛔️ Sizda ruxsat yo'q.")
