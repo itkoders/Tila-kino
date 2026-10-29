@@ -124,6 +124,18 @@ def on_command(m, u, created, text):
     if cmd == "/cancel":
         sv.clear_state(uid)
         return send(uid, t(lg, "cancelled"), main_menu_for(lg))
+    if cmd == "/setwelcome":
+        if not sv.is_admin(uid):
+            return send(uid, "⛔️ Sizda ruxsat yo'q.")
+        animation = m.get("animation")
+        document = m.get("document") or {}
+        if not animation and document.get("mime_type") == "image/gif":
+            animation = document
+        if not animation:
+            return send(uid, "🎞 TILAKINO kirish GIF'ini caption sifatida /setwelcome yozib yuboring.\n"
+                             "Masalan: GIF tanlang → caption: /setwelcome")
+        sv.set_setting("welcome_gif_file_id", animation["file_id"])
+        return send(uid, "✅ TILAKINO kirish GIF'i saqlandi. Keyingi /start da ishlatiladi.")
     if cmd == "/admin":
         if not sv.is_admin(uid):
             return send(uid, "⛔️ Sizda ruxsat yo'q.")
