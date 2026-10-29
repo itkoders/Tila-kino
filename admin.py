@@ -39,7 +39,7 @@ ACTION_PERM = {"dm": "catalog", "de": "catalog", "pv": "premium", "sd": "sponsor
 STATE_PERM = {"addm": "catalog", "adde": "catalog", "edit": "catalog", "media": "catalog", "find": "catalog",
               "pset": "premium", "pgrant": "premium", "prevoke": "premium", "pexpiry": "premium",
               "cardinfo": "premium", "promocreate": "premium", "usearch": "users", "spadd": "sponsor", "subset": "sponsor", "spcool": "sponsor",
-              "bc": "broadcast", "hladd": "owner"}
+              "bc": "broadcast", "hladd": "owner", "hladd_all": "owner", "hladd_catalog": "owner", "hladd_premium": "owner", "hladd_users": "owner", "hladd_sponsor": "owner", "hladd_stats": "owner", "hladd_broadcast": "owner"}
 
 WIZ_MOVIE = [("title", "🎬 <b>Nomi</b>"),
              ("year", "📅 Chiqqan yili (yoki <code>-</code>)"), ("country", "🌍 Davlat (yoki <code>-</code>)"),
