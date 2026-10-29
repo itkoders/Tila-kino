@@ -59,6 +59,11 @@ def send_photo(chat_id, photo, caption=None, reply_markup=None):
                 reply_markup=reply_markup)
 
 
+def send_animation(chat_id, animation, caption=None, reply_markup=None):
+    """Yuborilgan GIF/animatsiyani Telegram chatiga yuboradi."""
+    return call("sendAnimation", chat_id=chat_id, animation=animation, caption=caption, parse_mode="HTML",
+                reply_markup=reply_markup)
+
 def send_video(chat_id, video, caption=None, reply_markup=None, protect=False):
     return call("sendVideo", chat_id=chat_id, video=video, caption=caption, parse_mode="HTML",
                 reply_markup=reply_markup, protect_content=True if protect else None, supports_streaming=True)
