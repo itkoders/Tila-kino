@@ -32,13 +32,13 @@ PERM_OF = {"mov": "catalog", "addm": "catalog", "find": "catalog", "list": "cata
            "prem": "premium", "pl": "premium", "ppe": "premium", "pg": "premium", "pr": "premium", "px": "premium",
            "pa": "premium", "pxl": "premium", "pp": "premium", "ph": "premium", "pcard": "premium",
            "usr": "users", "us": "users", "uc": "users", "ub": "users",
-           "spn": "sponsor", "spa": "sponsor", "spt": "sponsor", "spd": "sponsor", "spc": "sponsor", "promos": "premium", "promonew": "premium", "promot": "premium",
+           "spn": "sponsor", "sub": "sponsor", "spa": "sponsor", "spt": "sponsor", "spd": "sponsor", "spc": "sponsor", "promos": "premium", "promonew": "premium", "promot": "premium",
            "st": "stats", "bc": "broadcast", "bcok": "broadcast",
            "hlp": "owner", "hla": "owner", "hlr": "owner", "au": "owner"}
 ACTION_PERM = {"dm": "catalog", "de": "catalog", "pv": "premium", "sd": "sponsor", "hr": "owner"}
 STATE_PERM = {"addm": "catalog", "adde": "catalog", "edit": "catalog", "media": "catalog", "find": "catalog",
               "pset": "premium", "pgrant": "premium", "prevoke": "premium", "pexpiry": "premium",
-              "cardinfo": "premium", "promocreate": "premium", "usearch": "users", "spadd": "sponsor", "spcool": "sponsor",
+              "cardinfo": "premium", "promocreate": "premium", "usearch": "users", "spadd": "sponsor", "subset": "sponsor", "spcool": "sponsor",
               "bc": "broadcast", "hladd": "owner"}
 
 WIZ_MOVIE = [("title", "🎬 <b>Nomi</b>"),
@@ -67,7 +67,7 @@ def panel(chat, msg):
     perms = sv.admin_perms(chat)
     items = [("catalog", "🎬 Kino va seriallar", "a:mov"), ("premium", "💎 Premium", "a:prem"),
              ("users", "👥 Foydalanuvchilar", "a:usr"), ("sponsor", "📢 Homiy xabarlar", "a:spn"),
-             ("stats", "📊 Statistika", "a:st"), ("broadcast", "📣 Xabar yuborish", "a:bc")]
+             ("sponsor", "🔒 Majburiy obuna", "a:sub"), ("stats", "📊 Statistika", "a:st"), ("broadcast", "📣 Xabar yuborish", "a:bc")]
     btns = [(label, cb) for perm, label, cb in items if perm in perms]
     if sv.is_owner(chat):
         btns += [("🛡 Yordamchi adminlar", "a:hlp"), ("🧾 Audit jurnali", "a:au")]
@@ -521,7 +521,51 @@ def cb_ub(ctx, a):
     user_card(ctx.chat, ctx.msg, uid)
 
 
-# ------------------------------------------------------------------ homiy xabarlar
+
+def cb_sub(ctx, a):
+    ctx.ans()
+    channel = (sv.get_setting("mandatory_channel") or "").strip()
+    state = "YOQILGAN" if channel else "O'CHIRILGAN"
+    show(ctx.chat, ctx.msg,
+         "🔒 <b>Majburiy obuna</b>\\nHolati: <b>" + state + "</b>\\nKanal: <code>" + esc(channel or "sozlanmagan") + "</code>\\n\\n"
+         "Kanalni ulash uchun «Kanalni sozlash»ni bosing va kanal username'ini yuboring (masalan <code>@TilaKino</code>). "
+         "O'chirish uchun «O'chirish»ni bosing. Bot kanal administrator bo'lishi shart.",
+         ikb([[("✏️ Kanalni sozlash", "a:subset")],
+              ([("⛔️ O'chirish", "a:suboff")] if channel else []),
+              back_row()]))
+
+def cb_subset(ctx, a):
+    ctx.ans()
+    sv.set_state(ctx.uid, "subset")
+    prompt(ctx.chat, "📢 Kanal username'ini yuboring, masalan <code>@TilaKino</code>. Bot shu kanalga administrator qilib qo'shilgan bo'lishi kerak.")
+
+def cb_suboff(ctx, a):
+    sv.set_setting("mandatory_channel", "")
+    sv.audit(ctx.uid, "mandatory_channel_off", "")
+    ctx.ans("Majburiy obuna o'chirildi")
+    cb_sub(ctx, [])
+
+def st_subset(m, uid, data, text):
+    channel = (text or "").strip()
+    if channel.startswith("https://t.me/"):
+        channel = "@" + channel.split("https://t.me/",1)[1].split("/",1)[0]
+    if not channel.startswith("@") or len(channel) < 6 or not channel[1:].replace("_","").isalnum():
+        raise ValueError("invalid")
+    try:
+        info = tg.call("getChat", chat_id=channel)
+        bot = tg.call("getMe")
+        member = tg.call("getChatMember", chat_id=channel, user_id=bot["id"])
+        if member.get("status") not in ("administrator", "creator"):
+            raise ValueError("invalid")
+    except Exception:
+        raise ValueError("invalid")
+    sv.set_setting("mandatory_channel", channel)
+    sv.audit(uid, "mandatory_channel_set", channel)
+    sv.clear_state(uid)
+    tg.send_message(uid, "✅ Majburiy obuna saqlandi: <code>" + esc(channel) + "</code>")
+    panel(uid, None)
+
+\n# ------------------------------------------------------------------ homiy xabarlar
 def cb_promos(ctx, a):
     ctx.ans()
     items = sv.list_promo_codes()
@@ -692,7 +736,7 @@ HANDLERS = {"home": cb_home, "cancel": cb_cancel, "mov": cb_mov, "list": cb_list
             "el": cb_media, "mt": cb_mt, "md": cb_md, "ep": cb_ep, "eps": cb_eps, "ec": cb_ec, "ee": cb_ee,
             "et": cb_et, "ed": cb_ed, "do": cb_do, "prem": cb_prem, "pl": cb_pl, "ppe": cb_ppe, "pg": cb_pg,
             "pr": cb_pr, "px": cb_px, "pa": cb_pa, "pxl": cb_pxl, "pp": cb_pp, "ph": cb_ph, "pcard": cb_pcard,
-            "usr": cb_usr, "us": cb_us, "uc": cb_uc, "ub": cb_ub, "spn": cb_spn, "spa": cb_spa, "spc": cb_spc,
+            "usr": cb_usr, "us": cb_us, "uc": cb_uc, "ub": cb_ub, "spn": cb_spn, "sub": cb_sub, "subset": cb_subset, "suboff": cb_suboff, "spa": cb_spa, "spc": cb_spc,
             "spt": cb_spt, "spd": cb_spd, "st": cb_st, "bc": cb_bc, "bcok": cb_bcok, "hlp": cb_hlp,
             "hla": cb_hla, "hlr": cb_hlr, "au": cb_au, "promos": cb_promos, "promonew": cb_promonew, "promot": cb_promot}
 
@@ -949,4 +993,4 @@ def st_hladd(m, uid, data, text):
 
 STATE_FN = {"addm": st_addm, "adde": st_adde, "edit": st_edit, "media": st_media, "find": st_find, "pset": st_pset,
             "pgrant": st_pgrant, "prevoke": st_prevoke, "pexpiry": st_pexpiry, "cardinfo": st_cardinfo,
-            "usearch": st_usearch, "promocreate": st_promocreate, "spadd": st_spadd, "spcool": st_spcool, "bc": st_bc, "hladd": st_hladd}
+            "usearch": st_usearch, "promocreate": st_promocreate, "spadd": st_spadd, "subset": st_subset, "spcool": st_spcool, "bc": st_bc, "hladd": st_hladd}
