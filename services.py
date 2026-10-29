@@ -782,6 +782,50 @@ def pick_sponsor(u):
     return random.choice(rows)
 
 
+
+# ------------------------------------------------------------------ promo-kodlar
+def create_promo_code(code, days, max_uses, created_by):
+    code = (code or "").strip().upper()
+    if code == "AUTO" or not code:
+        code = secrets.token_hex(4).upper()
+    if not re.fullmatch(r"[A-Z0-9_-]{3,24}", code):
+        raise ValueError("promo_format")
+    try:
+        days, max_uses = int(days), int(max_uses)
+    except (TypeError, ValueError):
+        raise ValueError("invalid")
+    if not 1 <= days <= 3650 or not 1 <= max_uses <= 100000:
+        raise ValueError("invalid")
+    with db.tx() as t:
+        if t.one("SELECT id FROM promo_codes WHERE code=?", (code,)):
+            raise ValueError("promo_taken")
+        pid = t.insert("INSERT INTO promo_codes(code,premium_days,max_uses,created_by,created_at) VALUES(?,?,?,?,?)",
+                       (code, days, max_uses, int(created_by), now()))
+    return {"id": pid, "code": code, "premium_days": days, "max_uses": max_uses}
+
+def list_promo_codes(limit=30):
+    return db.q("SELECT * FROM promo_codes ORDER BY id DESC LIMIT ?", (limit,))
+
+def toggle_promo_code(pid):
+    return db.execute("UPDATE promo_codes SET enabled=1-enabled WHERE id=?", (int(pid),)) > 0
+
+def redeem_promo_code(uid, code):
+    code = (code or "").strip().upper()
+    if not re.fullmatch(r"[A-Z0-9_-]{3,24}", code):
+        raise ValueError("promo_invalid")
+    with db.tx() as t:
+        p = t.one("SELECT * FROM promo_codes WHERE code=?", (code,))
+        if not p or not p["enabled"] or p["used_count"] >= p["max_uses"]:
+            raise ValueError("promo_invalid")
+        if t.one("SELECT id FROM promo_redemptions WHERE code_id=? AND user_id=?", (p["id"], int(uid))):
+            raise ValueError("promo_used")
+        if not t.one("SELECT id FROM users WHERE id=?", (int(uid),)):
+            raise ValueError("user_not_found")
+        end = _grant(t, int(uid), int(p["premium_days"]), "promo:" + code, None)
+        t.exec("INSERT INTO promo_redemptions(code_id,user_id,redeemed_at) VALUES(?,?,?)", (p["id"], int(uid), now()))
+        t.exec("UPDATE promo_codes SET used_count=used_count+1 WHERE id=? AND used_count<max_uses", (p["id"],))
+    return {"code": code, "days": int(p["premium_days"]), "expires_at": end}
+
 # ------------------------------------------------------------------ statistika
 def stats():
     n = now()
