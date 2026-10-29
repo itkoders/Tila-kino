@@ -4,13 +4,14 @@
 LANGS = {"uz": "🇺🇿 O'zbekcha", "ru": "🇷🇺 Русский", "en": "🇬🇧 English", "tg": "🇹🇯 Тоҷикӣ"}
 
 MENU_KEYS = ["menu_movies", "menu_search", "menu_code", "menu_series",
-             "menu_favs", "menu_premium", "menu_profile", "menu_sub"]
+             "menu_favs", "menu_premium", "menu_profile", "menu_sub", "menu_promo"]
 
 TEXTS = {
     "uz": {
         "menu_movies": "🎬 Kinolar", "menu_search": "🔎 Kino qidirish", "menu_code": "🔢 Kod orqali topish",
         "menu_series": "📺 Seriallar", "menu_favs": "❤️ Sevimlilar", "menu_premium": "💎 Premium sotib olish",
-        "menu_profile": "👤 Mening profilim", "menu_sub": "📊 Obuna muddati va tomosha tarixi",
+        "menu_profile": "👤 Mening profilim", "menu_sub": "📊 Obuna muddati va tomosha tarixi", "menu_promo": "🎟 Promo-kod kiritish",
+        "promo_prompt": "🎟 Promo-kodingizni yuboring:", "promo_used": "⚠️ Bu promo-koddan oldin foydalangansiz.", "promo_invalid": "❌ Promo-kod notoʻgʻri, limiti tugagan yoki faol emas.", "promo_success": "🎉 Promo-kod <code>{code}</code> qabul qilindi!\n💎 Premium: +{days} kun\n📅 Tugash: {expires}",
         "welcome": "Xush kelibsiz, <b>{name}</b>! 🍿\n\nKino kodini yuboring yoki menyudan tanlang.\n{status}",
         "status_premium": "💎 Premium: {date} gacha", "status_free": "🆓 Oddiy tarif",
         "btn_back": "⬅️ Orqaga", "btn_menu": "🏠 Menyu", "btn_cancel": "❌ Bekor qilish",
@@ -54,7 +55,8 @@ TEXTS = {
     "ru": {
         "menu_movies": "🎬 Фильмы", "menu_search": "🔎 Поиск фильма", "menu_code": "🔢 Поиск по коду",
         "menu_series": "📺 Сериалы", "menu_favs": "❤️ Избранное", "menu_premium": "💎 Купить Premium",
-        "menu_profile": "👤 Мой профиль", "menu_sub": "📊 Подписка и история просмотров",
+        "menu_profile": "👤 Мой профиль", "menu_sub": "📊 Подписка и история просмотров", "menu_promo": "🎟 Ввести промокод",
+        "promo_prompt": "🎟 Отправьте ваш промокод:", "promo_used": "⚠️ Вы уже использовали этот промокод.", "promo_invalid": "❌ Промокод неверный, неактивен или лимит исчерпан.", "promo_success": "🎉 Промокод <code>{code}</code> принят!\n💎 Premium: +{days} дн.\n📅 До: {expires}",
         "welcome": "Добро пожаловать, <b>{name}</b>! 🍿\n\nОтправьте код фильма или выберите в меню.\n{status}",
         "status_premium": "💎 Premium до {date}", "status_free": "🆓 Обычный тариф",
         "btn_back": "⬅️ Назад", "btn_menu": "🏠 Меню", "btn_cancel": "❌ Отмена", "btn_confirm": "✅ Подтвердить",
@@ -77,7 +79,8 @@ TEXTS = {
     "en": {
         "menu_movies": "🎬 Movies", "menu_search": "🔎 Search", "menu_code": "🔢 Find by code",
         "menu_series": "📺 Series", "menu_favs": "❤️ Favorites", "menu_premium": "💎 Buy Premium",
-        "menu_profile": "👤 My profile", "menu_sub": "📊 Subscription & watch history",
+        "menu_profile": "👤 My profile", "menu_sub": "📊 Subscription & watch history", "menu_promo": "🎟 Enter promo code",
+        "promo_prompt": "🎟 Send your promo code:", "promo_used": "⚠️ You have already used this promo code.", "promo_invalid": "❌ Promo code is invalid, inactive, or its limit is reached.", "promo_success": "🎉 Promo code <code>{code}</code> accepted!\n💎 Premium: +{days} days\n📅 Expires: {expires}",
         "welcome": "Welcome, <b>{name}</b>! 🍿\n\nSend a movie code or pick from the menu.\n{status}",
         "status_premium": "💎 Premium until {date}", "status_free": "🆓 Free plan",
         "btn_back": "⬅️ Back", "btn_menu": "🏠 Menu", "btn_cancel": "❌ Cancel", "btn_confirm": "✅ Confirm",
@@ -100,7 +103,8 @@ TEXTS = {
     "tg": {
         "menu_movies": "🎬 Филмҳо", "menu_search": "🔎 Ҷустуҷӯи филм", "menu_code": "🔢 Ҷустуҷӯ бо код",
         "menu_series": "📺 Серияҳо", "menu_favs": "❤️ Дӯстдошта", "menu_premium": "💎 Харидани Premium",
-        "menu_profile": "👤 Профили ман", "menu_sub": "📊 Обуна ва таърихи тамошо",
+        "menu_profile": "👤 Профили ман", "menu_sub": "📊 Обуна ва таърихи тамошо", "menu_promo": "🎟 Ворид кардани промокод",
+        "promo_prompt": "🎟 Промокоди худро фиристед:", "promo_used": "⚠️ Шумо ин промокодро аллакай истифода бурдаед.", "promo_invalid": "❌ Промокод нодуруст, ғайрифаъол ё лимиташ тамом шудааст.", "promo_success": "🎉 Промокод <code>{code}</code> қабул шуд!\n💎 Premium: +{days} рӯз\n📅 То: {expires}",
         "welcome": "Хуш омадед, <b>{name}</b>! 🍿\n\nКоди филмро фиристед ё аз меню интихоб кунед.\n{status}",
         "status_premium": "💎 Premium то {date}", "status_free": "🆓 Тарифи оддӣ",
         "btn_back": "⬅️ Бозгашт", "btn_menu": "🏠 Меню", "btn_cancel": "❌ Бекор кардан",
