@@ -115,5 +115,12 @@ def loading(chat_id, label):
 
 
 def typing_intro(chat_id, word="TILAKINO"):
+    # Ixtiyoriy GIF: Render Environment -> WELCOME_GIF_FILE_ID ga Telegram file_id kiriting.
+    if cfg.animations and cfg.welcome_gif_file_id:
+        try:
+            tg.send_animation(chat_id, cfg.welcome_gif_file_id, caption="🎬 <b>TILAKINO — Kino olami</b> 🍿")
+            return
+        except tg.TgError as e:
+            log.warning("welcome GIF yuborilmadi, matnli animatsiyaga qaytamiz: %s", e.description)
     steps = sorted({max(1, round(len(word) * i / 4)) for i in range(1, 5)})
     animate(chat_id, [f"🎬 <b>{word[:n]}</b>{'▌' if n < len(word) else ' 🍿'}" for n in steps])
