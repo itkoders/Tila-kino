@@ -30,6 +30,7 @@ seriallar, 4 tilli interfeys, animatsiyali bot va sayt.
 | `CRON_SECRET` | tavsiya | `/cron/tick` himoyasi |
 | `PAYMENT_CALLBACK_SECRET` | ixtiyoriy | Faqat avtomatik to'lov ulansa |
 | `ANIMATIONS`, `ANIM_DELAY` | yo'q | Animatsiyani o'chirish (`0`) / kadr tezligi (soniya, standart 0.35) |
+| `WELCOME_GIF_FILE_ID` | yo'q | Telegramdagi TILAKINO kirish GIF animatsiyasining `file_id` qiymati; bo'sh bo'lsa matnli animatsiya ishlaydi |
 
 ## Android'dan o'rnatish (brauzer yetadi)
 1. **GitHub** (`itkoders/Kino`) → *Add file → Upload files*: ushbu papkadagi barcha fayllarni (`templates/` va `tests/` bilan) yuklang → *Commit*.
