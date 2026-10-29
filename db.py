@@ -157,6 +157,10 @@ def execute(sql, args=()):
 def _migrate_legacy_users():
     """Eski SQLite sxemasidagi telegram_id/created_at ustunlarini moslaydi."""
     if IS_PG:
+        with tx() as t:
+            found = t.one("SELECT 1 AS x FROM information_schema.tables WHERE table_schema=current_schema() AND table_name='users'")
+            if found:
+                t.exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at BIGINT")
         return
     conn = _connect()
     try:
