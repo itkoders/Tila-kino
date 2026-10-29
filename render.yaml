@@ -17,6 +17,8 @@ services:
         value: "6359925487"
       - key: BOT_USERNAME
         sync: false
+      - key: WELCOME_GIF_FILE_ID
+        sync: false
       - key: CRON_SECRET
         sync: false
       - key: PYTHON_VERSION
