@@ -31,7 +31,7 @@ def ikb(rows):
 
 def main_menu(lg):
     ks = [t(lg, k) for k in MENU_KEYS]
-    rows = [ks[0:2], ks[2:4], ks[4:6], ks[6:7], ks[7:8]]
+    rows = [ks[0:2], ks[2:4], ks[4:6], ks[6:8], ks[8:9]]
     return {"keyboard": [[{"text": x} for x in r] for r in rows], "resize_keyboard": True}
 
 
