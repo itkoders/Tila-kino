@@ -12,7 +12,7 @@ from ui import esc, ikb, nav_row, pager, send, show
 
 log = logging.getLogger("tilakino.handlers")
 MENU_LABELS = menu_label_map()
-USER_STATES = ("search", "code", "proof")
+USER_STATES = ("search", "code", "proof", "promo")
 STATUS_ICON = {"pending": "⏳", "approved": "✅", "rejected": "❌", "expired": "⌛️"}
 _bot_username = {"v": None}
 
@@ -204,6 +204,9 @@ def on_menu(uid, u, key):
         return show_profile(uid, u)
     if key == "menu_sub":
         return show_sub(uid, u)
+    if key == "menu_promo":
+        sv.set_state(uid, "promo")
+        return send(uid, t(lg, "promo_prompt"), ikb([[(t(lg, "btn_cancel"), "cancel")]]))
 
 
 def maybe_sponsor(uid, u):
@@ -237,6 +240,15 @@ def user_state(m, u, state, data, text):
     if not text:
         return send(uid, t(lg, "invalid"))
     sv.clear_state(uid)
+    if state == "promo":
+        try:
+            result = sv.redeem_promo_code(uid, text)
+        except ValueError as e:
+            if str(e) == "promo_used":
+                return send(uid, t(lg, "promo_used"), main_menu_for(lg))
+            return send(uid, t(lg, "promo_invalid"), main_menu_for(lg))
+        sv.audit(uid, "promo_redeem", f"{result['code']}:{uid}")
+        return send(uid, t(lg, "promo_success", code=esc(result["code"]), days=result["days"], expires=sv.fmt_dt(result["expires_at"])), main_menu_for(lg))
     if state == "code":
         if not text.isdigit():
             return send(uid, t(lg, "invalid"))
