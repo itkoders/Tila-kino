@@ -499,6 +499,20 @@ def get_movie(mid):
     return db.one("SELECT * FROM movies WHERE id=?", (mid,))
 
 
+def generate_movie_code():
+    """Katalog uchun band bo'lmagan 4 xonali raqamli kod yaratadi."""
+    for _ in range(100):
+        code = str(secrets.randbelow(9000) + 1000)
+        if not get_movie_by_code(code, published_only=False):
+            return code
+    # Katalogda 4 xonali kodlar juda ko'p bo'lib qolsa, uzunroq kodga o'tadi.
+    for _ in range(100):
+        code = str(secrets.randbelow(900000) + 100000)
+        if not get_movie_by_code(code, published_only=False):
+            return code
+    raise RuntimeError("Bo'sh kino kodi topilmadi")
+
+
 def get_movie_by_code(code, published_only=True):
     sql = "SELECT * FROM movies WHERE code=?" + (" AND published=1" if published_only else "")
     return db.one(sql, (code,))
