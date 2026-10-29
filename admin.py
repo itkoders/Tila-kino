@@ -23,7 +23,7 @@ ERR = {"code_format": "Kod faqat raqamlardan (1–12 ta) iborat bo'lishi kerak",
        "user_not_found": "Foydalanuvchi topilmadi (u botga /start bosgan bo'lishi kerak)",
        "invalid": "Noto'g'ri qiymat", "owner": "Asosiy administratorga bu amal qo'llanmaydi",
        "not_found": "Topilmadi", "no_perms": "Kamida bitta ruxsat kerak", "not_series": "Bu serial emas",
-       "field": "Noma'lum maydon", "text": "Matn bo'sh yoki juda uzun"}
+       "field": "Noma'lum maydon", "text": "Matn bo'sh yoki juda uzun", "promo_format": "Promo-kod 3–24 ta lotin harfi/raqamdan iborat bo'lsin", "promo_taken": "Bu promo-kod oldin yaratilgan"}
 
 PERM_OF = {"mov": "catalog", "addm": "catalog", "find": "catalog", "list": "catalog", "mc": "catalog",
            "me": "catalog", "mp": "catalog", "mv": "catalog", "ml": "catalog", "mt": "catalog", "md": "catalog",
@@ -32,13 +32,13 @@ PERM_OF = {"mov": "catalog", "addm": "catalog", "find": "catalog", "list": "cata
            "prem": "premium", "pl": "premium", "ppe": "premium", "pg": "premium", "pr": "premium", "px": "premium",
            "pa": "premium", "pxl": "premium", "pp": "premium", "ph": "premium", "pcard": "premium",
            "usr": "users", "us": "users", "uc": "users", "ub": "users",
-           "spn": "sponsor", "spa": "sponsor", "spt": "sponsor", "spd": "sponsor", "spc": "sponsor",
+           "spn": "sponsor", "spa": "sponsor", "spt": "sponsor", "spd": "sponsor", "spc": "sponsor", "promos": "premium", "promonew": "premium", "promot": "premium",
            "st": "stats", "bc": "broadcast", "bcok": "broadcast",
            "hlp": "owner", "hla": "owner", "hlr": "owner", "au": "owner"}
 ACTION_PERM = {"dm": "catalog", "de": "catalog", "pv": "premium", "sd": "sponsor", "hr": "owner"}
 STATE_PERM = {"addm": "catalog", "adde": "catalog", "edit": "catalog", "media": "catalog", "find": "catalog",
               "pset": "premium", "pgrant": "premium", "prevoke": "premium", "pexpiry": "premium",
-              "cardinfo": "premium", "usearch": "users", "spadd": "sponsor", "spcool": "sponsor",
+              "cardinfo": "premium", "promocreate": "premium", "usearch": "users", "spadd": "sponsor", "spcool": "sponsor",
               "bc": "broadcast", "hladd": "owner"}
 
 WIZ_MOVIE = [("title", "🎬 <b>Nomi</b>"),
@@ -521,6 +521,33 @@ def cb_ub(ctx, a):
 
 
 # ------------------------------------------------------------------ homiy xabarlar
+def cb_promos(ctx, a):
+    ctx.ans()
+    items = sv.list_promo_codes()
+    lines = ["🎟 <b>Promo-kodlar</b>", "Yaratish: Premium kunlari va foydalanish limitini belgilang.", ""]
+    rows = []
+    for p in items:
+        lines.append(f"{'🟢' if p['enabled'] else '⚪️'} <code>{esc(p['code'])}</code> — {p['premium_days']} kun · {p['used_count']}/{p['max_uses']}")
+        rows.append([(("⏸ O'chirish" if p["enabled"] else "▶️ Yoqish"), f"a:promot:{p['id']}")])
+    rows.append([("➕ Promo-kod yaratish", "a:promonew")])
+    rows.append(back_row("a:home"))
+    show(ctx.chat, ctx.msg, "\n".join(lines), ikb(rows))
+
+
+def cb_promonew(ctx, a):
+    ctx.ans()
+    sv.set_state(ctx.uid, "promocreate")
+    prompt(ctx.chat, "🎟 Format: <code>KUNLAR LIMIT KOD</code>\nMasalan: <code>7 100 AUTO</code> — bot kodni o'zi yaratadi. Yoki <code>30 1 TILA30</code>.")
+
+
+def cb_promot(ctx, a):
+    if not a or not a[0].isdigit():
+        return ctx.ans("Noto'g'ri promo-kod", True)
+    sv.toggle_promo_code(int(a[0]))
+    sv.audit(ctx.uid, "promo_toggle", a[0])
+    cb_promos(ctx, [])
+
+
 def cb_spn(ctx, a):
     ctx.ans()
     sp = sv.list_sponsors()
@@ -666,7 +693,7 @@ HANDLERS = {"home": cb_home, "cancel": cb_cancel, "mov": cb_mov, "list": cb_list
             "pr": cb_pr, "px": cb_px, "pa": cb_pa, "pxl": cb_pxl, "pp": cb_pp, "ph": cb_ph, "pcard": cb_pcard,
             "usr": cb_usr, "us": cb_us, "uc": cb_uc, "ub": cb_ub, "spn": cb_spn, "spa": cb_spa, "spc": cb_spc,
             "spt": cb_spt, "spd": cb_spd, "st": cb_st, "bc": cb_bc, "bcok": cb_bcok, "hlp": cb_hlp,
-            "hla": cb_hla, "hlr": cb_hlr, "au": cb_au}
+            "hla": cb_hla, "hlr": cb_hlr, "au": cb_au, "promos": cb_promos, "promonew": cb_promonew, "promot": cb_promot}
 
 
 # ------------------------------------------------------------------ matnli/fayl qadamlari
@@ -866,6 +893,16 @@ def st_usearch(m, uid, data, text):
     user_card(uid, None, int(text))
 
 
+def st_promocreate(m, uid, data, text):
+    p = (text or "").split()
+    if len(p) != 3 or not p[0].isdigit() or not p[1].isdigit():
+        raise ValueError("invalid")
+    result = sv.create_promo_code(p[2], int(p[0]), int(p[1]), uid)
+    sv.audit(uid, "promo_create", f"{result['code']}:{result['premium_days']}:{result['max_uses']}")
+    sv.clear_state(uid)
+    tg.send_message(uid, f"✅ Promo-kod: <code>{esc(result['code'])}</code>\n💎 Premium: {result['premium_days']} kun\n🔢 Limit: {result['max_uses']} marta", ikb([[("🎟 Promo-kodlar", "a:promos")]]))
+
+
 def st_spadd(m, uid, data, text):
     lines = (text or "").split("\n")
     sid = sv.add_sponsor(lines[0], lines[1].strip() if len(lines) > 1 and lines[1].strip() else None)
@@ -911,4 +948,4 @@ def st_hladd(m, uid, data, text):
 
 STATE_FN = {"addm": st_addm, "adde": st_adde, "edit": st_edit, "media": st_media, "find": st_find, "pset": st_pset,
             "pgrant": st_pgrant, "prevoke": st_prevoke, "pexpiry": st_pexpiry, "cardinfo": st_cardinfo,
-            "usearch": st_usearch, "spadd": st_spadd, "spcool": st_spcool, "bc": st_bc, "hladd": st_hladd}
+            "usearch": st_usearch, "promocreate": st_promocreate, "spadd": st_spadd, "spcool": st_spcool, "bc": st_bc, "hladd": st_hladd}
