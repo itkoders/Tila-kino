@@ -1,0 +1,20 @@
+name: Database migration tests
+
+on:
+  push:
+    branches:
+      - fix/database-migrations-2026-10
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  sqlite-migrations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run database migration tests
+        run: python -m unittest discover -s tests -v
