@@ -85,7 +85,8 @@ def show_subscription_gate(uid):
     send(uid, "🔒 <b>TilaKino’dan foydalanish uchun kanalimizga obuna bo‘ling.</b>\n\nObuna bo‘lgach, «Obunani tekshirish» tugmasini bosing.", kb)
     return True
 
-\ndef on_message(m):
+
+def on_message(m):
     chat = m.get("chat") or {}
     frm = m.get("from")
     if chat.get("type") != "private" or not frm or frm.get("is_bot"):
