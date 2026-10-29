@@ -41,7 +41,7 @@ STATE_PERM = {"addm": "catalog", "adde": "catalog", "edit": "catalog", "media": 
               "cardinfo": "premium", "usearch": "users", "spadd": "sponsor", "spcool": "sponsor",
               "bc": "broadcast", "hladd": "owner"}
 
-WIZ_MOVIE = [("code", "🔢 Noyob <b>raqamli kod</b> yuboring (masalan: 1234)"), ("title", "🎬 <b>Nomi</b>"),
+WIZ_MOVIE = [("title", "🎬 <b>Nomi</b>"),
              ("year", "📅 Chiqqan yili (yoki <code>-</code>)"), ("country", "🌍 Davlat (yoki <code>-</code>)"),
              ("genre", "🎭 Janr (yoki <code>-</code>)"),
              ("language", "🗣 Til: <code>uz</code>, <code>ru</code>, <code>en</code>, <code>tg</code> (vergul bilan, yoki <code>-</code>)"),
@@ -712,6 +712,8 @@ def st_addm(m, uid, data, text):
         data["i"] = i
         sv.set_state(uid, "addm", data)
         return prompt(uid, WIZ_MOVIE[i][1])
+    # Kodni bot o'zi yaratadi; admin har safar qo'lda raqam tanlamaydi.
+    data["v"]["code"] = sv.generate_movie_code()
     movie = sv.create_movie({**data["v"], "kind": data["kind"]})
     sv.clear_state(uid)
     sv.audit(uid, f"{data['kind']}_create", f"{movie['id']}:{movie['code']}:{movie['title']}")
