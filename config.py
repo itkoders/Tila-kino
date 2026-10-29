@@ -23,6 +23,7 @@ class Settings:
         self.cron_secret = _g("CRON_SECRET")
         self.payment_secret = _g("PAYMENT_CALLBACK_SECRET")
         self.animations = _g("ANIMATIONS", "1") not in ("0", "false", "no")
+        self.welcome_gif_file_id = _g("WELCOME_GIF_FILE_ID")
         self.anim_delay = float(_g("ANIM_DELAY", "0.35") or 0.35)
         self.scheduler = _g("ENABLE_SCHEDULER", "1") not in ("0", "false", "no")
         self.tz = "Asia/Tashkent"
