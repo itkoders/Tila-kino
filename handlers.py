@@ -60,7 +60,32 @@ def handle_update(upd):
         on_callback(upd["callback_query"])
 
 
-def on_message(m):
+
+def mandatory_channel():
+    return (sv.get_setting("mandatory_channel") or "").strip()
+
+def subscription_ok(uid):
+    channel = mandatory_channel()
+    if not channel or sv.is_admin(uid):
+        return True
+    try:
+        member = tg.call("getChatMember", chat_id=channel, user_id=uid)
+        return member.get("status") in ("creator", "administrator", "member", "restricted") and not member.get("is_member") is False
+    except Exception as e:
+        log.warning("Majburiy obuna tekshirilmadi: %s", type(e).__name__)
+        return False
+
+def show_subscription_gate(uid):
+    channel = mandatory_channel()
+    if not channel:
+        return False
+    target = channel if channel.startswith("@") else "@" + channel.lstrip("@")
+    url = "https://t.me/" + target.lstrip("@")
+    kb = ikb([ [("📢 Kanalga obuna bo‘lish", url)], [("✅ Obunani tekshirish", "subcheck")] ])
+    send(uid, "🔒 <b>TilaKino’dan foydalanish uchun kanalimizga obuna bo‘ling.</b>\n\nObuna bo‘lgach, «Obunani tekshirish» tugmasini bosing.", kb)
+    return True
+
+\ndef on_message(m):
     chat = m.get("chat") or {}
     frm = m.get("from")
     if chat.get("type") != "private" or not frm or frm.get("is_bot"):
@@ -73,6 +98,9 @@ def on_message(m):
             send(uid, t(lg, "blocked"))
             return
         text = (m.get("text") or "").strip()
+        if not sv.is_admin(uid) and not subscription_ok(uid):
+            show_subscription_gate(uid)
+            return
         if text.startswith("/"):
             return on_command(m, u, created, text)
         if text in MENU_LABELS:
@@ -714,6 +742,17 @@ def on_callback(c):
         if u["blocked"]:
             return ctx.ans(t(ctx.lg, "blocked"), True)
         parts = ctx.data.split(":")
+        if parts[0] == "subcheck":
+            if subscription_ok(ctx.uid):
+                ctx.ans("✅ Obuna tasdiqlandi")
+                return start_screen(ctx.uid, u, animate=False)
+            ctx.ans("❌ Avval kanalga obuna bo‘ling", True)
+            show_subscription_gate(ctx.uid)
+            return
+        if not sv.is_admin(ctx.uid) and not subscription_ok(ctx.uid):
+            ctx.ans("🔒 Avval kanalga obuna bo‘ling", True)
+            show_subscription_gate(ctx.uid)
+            return
         fn = ROUTES.get(parts[0])
         if not fn:
             return ctx.ans()
