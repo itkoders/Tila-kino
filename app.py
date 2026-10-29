@@ -110,9 +110,17 @@ def create_app():
         if not first:
             return jsonify({"ok": True, "duplicate": True})
         try:
+            update_kind = "callback_query" if "callback_query" in upd else "message" if "message" in upd else "other"
+            log.info("Telegram update boshlandi: id=%s turi=%s", upd["update_id"], update_kind)
             handlers.handle_update(upd)
+            log.info("Telegram update yakunlandi: id=%s turi=%s", upd["update_id"], update_kind)
         except Exception:
-            log.exception("update qayta ishlashda xato")
+            log.exception("update qayta ishlashda xato; Telegram qayta yuborishi uchun update bo'shatildi")
+            try:
+                sv.release_update(upd["update_id"])
+            except Exception:
+                log.exception("update qayta urinish uchun bo'shatilmadi")
+            return jsonify({"error": "update processing failed"}), 500
         return jsonify({"ok": True})
 
     # ---------------------------------------------------------------- to'lov callbacki
