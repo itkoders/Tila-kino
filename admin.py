@@ -565,7 +565,8 @@ def st_subset(m, uid, data, text):
     tg.send_message(uid, "✅ Majburiy obuna saqlandi: <code>" + esc(channel) + "</code>")
     panel(uid, None)
 
-\n# ------------------------------------------------------------------ homiy xabarlar
+
+# ------------------------------------------------------------------ homiy xabarlar
 def cb_promos(ctx, a):
     ctx.ans()
     items = sv.list_promo_codes()
