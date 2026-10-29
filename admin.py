@@ -469,7 +469,9 @@ def cb_pcard(ctx, a):
 # ------------------------------------------------------------------ foydalanuvchilar
 def cb_usr(ctx, a):
     ctx.ans()
-    show(ctx.chat, ctx.msg, "👥 <b>Foydalanuvchilar</b>", ikb([[("🔎 Telegram ID bo'yicha", "a:us")], back_row()]))
+    show(ctx.chat, ctx.msg,
+         "👥 <b>Foydalanuvchilar</b>\n\nID orqali foydalanuvchi kartasini oching. Kartada username, ID, qo‘shilgan sana, oxirgi faollik, blok holati va Premium muddati ko‘rinadi.",
+         ikb([[("🔎 Telegram ID bo‘yicha", "a:us")], back_row()]))
 
 
 def cb_us(ctx, a):
@@ -716,9 +718,23 @@ def cb_hlp(ctx, a):
 
 def cb_hla(ctx, a):
     ctx.ans()
-    sv.set_state(ctx.uid, "hladd")
-    prompt(ctx.chat, "➕ Format: <code>ID ruxsat1,ruxsat2</code> yoki <code>ID all</code>\n"
-                     f"Ruxsatlar: {', '.join(sv.PERMS)}")
+    rows = [
+        [("🛡 To‘liq huquq", "a:hlrole:all")],
+        [("🎬 Katalog", "a:hlrole:catalog"), ("💎 Premium", "a:hlrole:premium")],
+        [("👥 Foydalanuvchilar", "a:hlrole:users"), ("📢 Homiy", "a:hlrole:sponsor")],
+        [("📊 Statistika", "a:hlrole:stats"), ("📣 Xabar tarqatish", "a:hlrole:broadcast")],
+        [("↩️ Orqaga", "a:hlp")]
+    ]
+    show(ctx.chat, ctx.msg, "➕ <b>Yordamchi admin qo‘shish</b>\nAvval ruxsat turini tanlang:", ikb(rows))
+
+
+def cb_hlrole(ctx, a):
+    ctx.ans()
+    if not a or a[0] not in (["all"] + list(sv.PERMS)):
+        return ctx.ans("Ruxsat turi noto‘g‘ri", True)
+    role = a[0]
+    sv.set_state(ctx.uid, "hladd_" + role)
+    prompt(ctx.chat, f"🆔 Tanlangan ruxsat: <b>{esc(role)}</b>\nYordamchi adminning raqamli Telegram ID sini yuboring:")
 
 
 def cb_hlr(ctx, a):
@@ -739,7 +755,7 @@ HANDLERS = {"home": cb_home, "cancel": cb_cancel, "mov": cb_mov, "list": cb_list
             "pr": cb_pr, "px": cb_px, "pa": cb_pa, "pxl": cb_pxl, "pp": cb_pp, "ph": cb_ph, "pcard": cb_pcard,
             "usr": cb_usr, "us": cb_us, "uc": cb_uc, "ub": cb_ub, "spn": cb_spn, "sub": cb_sub, "subset": cb_subset, "suboff": cb_suboff, "spa": cb_spa, "spc": cb_spc,
             "spt": cb_spt, "spd": cb_spd, "st": cb_st, "bc": cb_bc, "bcok": cb_bcok, "hlp": cb_hlp,
-            "hla": cb_hla, "hlr": cb_hlr, "au": cb_au, "promos": cb_promos, "promonew": cb_promonew, "promot": cb_promot}
+            "hla": cb_hla, "hlrole": cb_hlrole, "hlr": cb_hlr, "au": cb_au, "promos": cb_promos, "promonew": cb_promonew, "promot": cb_promot}
 
 
 # ------------------------------------------------------------------ matnli/fayl qadamlari
@@ -980,18 +996,38 @@ def st_bc(m, uid, data, text):
 
 
 def st_hladd(m, uid, data, text):
-    p = (text or "").split()
-    if len(p) != 2 or not p[0].lstrip("-").isdigit():
+    p = (text or "").strip()
+    if not p.lstrip("-").isdigit():
         raise ValueError("invalid")
-    perms = list(sv.PERMS) if p[1].lower() == "all" else p[1].lower().split(",")
+    role = data.get("role", "all") if isinstance(data, dict) else "all"
+    perms = list(sv.PERMS) if role == "all" else [role]
     try:
-        perms = sv.add_helper(uid, int(p[0]), perms)
+        perms = sv.add_helper(uid, int(p), perms)
     except PermissionError:
         raise ValueError("owner")
     sv.clear_state(uid)
-    tg.send_message(uid, f"✅ Yordamchi qo'shildi: <code>{int(p[0])}</code> — {', '.join(perms)}", ikb([[("🛡 Adminlar", "a:hlp")]]))
+    tg.send_message(uid, f"✅ Yordamchi qo‘shildi: <code>{int(p)}</code> — {', '.join(perms)}", ikb([[("🛡 Adminlar", "a:hlp")]]))
 
+
+
+def _st_hlrole(role):
+    def _handler(m, uid, data, text):
+        try:
+            perms = list(sv.PERMS) if role == "all" else [role]
+            raw = (text or "").strip()
+            if not raw.lstrip("-").isdigit():
+                raise ValueError("invalid")
+            try:
+                perms = sv.add_helper(uid, int(raw), perms)
+            except PermissionError:
+                raise ValueError("owner")
+            sv.clear_state(uid)
+            tg.send_message(uid, f"✅ Yordamchi qo‘shildi: <code>{int(raw)}</code> — {', '.join(perms)}",
+                            ikb([[("🛡 Adminlar", "a:hlp")]]))
+        except ValueError:
+            raise
+    return _handler
 
 STATE_FN = {"addm": st_addm, "adde": st_adde, "edit": st_edit, "media": st_media, "find": st_find, "pset": st_pset,
             "pgrant": st_pgrant, "prevoke": st_prevoke, "pexpiry": st_pexpiry, "cardinfo": st_cardinfo,
-            "usearch": st_usearch, "promocreate": st_promocreate, "spadd": st_spadd, "subset": st_subset, "spcool": st_spcool, "bc": st_bc, "hladd": st_hladd}
+            "usearch": st_usearch, "hladd_all": _st_hlrole("all"), "hladd_catalog": _st_hlrole("catalog"), "hladd_premium": _st_hlrole("premium"), "hladd_users": _st_hlrole("users"), "hladd_sponsor": _st_hlrole("sponsor"), "hladd_stats": _st_hlrole("stats"), "hladd_broadcast": _st_hlrole("broadcast"), "promocreate": st_promocreate, "spadd": st_spadd, "subset": st_subset, "spcool": st_spcool, "bc": st_bc, "hladd": st_hladd}
