@@ -366,6 +366,7 @@ def cb_prem(ctx, a):
         [("💰 Narx va muddat", "a:pl"), ("💳 Karta ma'lumoti", "a:pcard")],
         [("🎁 Premium berish", "a:pg"), ("🚫 Premiumni bekor qilish", "a:pr")],
         [("📅 Muddatni belgilash", "a:px")],
+        [("🎟 Promo-kodlar", "a:promos")],
         [("✅ Faol obunalar", "a:pa"), ("⌛️ Muddati o'tgan", "a:pxl")],
         [("⏳ Kutilayotgan to'lovlar", "a:pp"), ("🧾 To'lovlar tarixi", "a:ph")],
         back_row()]))
