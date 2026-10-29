@@ -180,9 +180,9 @@ def upsert_user(tgu):
             t.exec("UPDATE users SET first_name=?, username=?, last_seen=? WHERE id=?", (name, uname, n, uid))
             u.update(first_name=name, username=uname, last_seen=n)
             return u, False
-        ins = t.exec("INSERT INTO users(id,first_name,username,lang,joined_at,last_seen) VALUES(?,?,?,?,?,?) "
+        ins = t.exec("INSERT INTO users(id,first_name,username,lang,joined_at,last_seen,created_at) VALUES(?,?,?,?,?,?,?) "
                      "ON CONFLICT(id) DO NOTHING",
-                     (uid, name, uname, guess_lang(tgu.get("language_code")), n, n))
+                     (uid, name, uname, guess_lang(tgu.get("language_code")), n, n, n))
         return t.one("SELECT * FROM users WHERE id=?", (uid,)), ins == 1
 
 
