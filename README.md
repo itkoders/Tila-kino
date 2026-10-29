@@ -16,7 +16,7 @@ seriallar, 4 tilli interfeys, animatsiyali bot va sayt.
 | `payment_providers.py` | To'lov provayderlari (hozir: imzolangan `generic` webhook) |
 | `scheduler.py` | Muddat tugashi, 3 kunlik va tugash kuni eslatmalari |
 | `templates/` | Animatsiyali sayt (mobilga moslashgan) |
-| `tests/` | 67 ta avtomatik test (Telegram so'rovlari mock qilingan) |
+| `tests/` | Avtomatik testlar repozitoriyda hozircha mavjud emas; deploydan oldin alohida tekshirish kerak |
 
 ## Muhit o'zgaruvchilari (Render → Environment)
 | Nomi | Majburiy | Izoh |
@@ -72,7 +72,7 @@ Tekshiruv faqat Telegram yuborgan raqamli ID bo'yicha.
 ## Tekshirish ro'yxati (haqiqiy holat)
 | Holat | Element |
 |---|---|
-| ✅ Kod testlari o'tdi (67 ta, SQLite, mock Telegram) | menyu, qidiruv/kod, seriallar, sifat tanlash, sevimlilar/tarix, admin ruxsati, wizardlar, Premium/to'lov holatlari, takroriy update/callback, eslatmalar, broadcast, sayt/API |
+| ⚠️ Avtomatik test natijasi tasdiqlanmagan | Repozitoriyda `tests/` papkasi yo'q; 67 ta test o'tgan degan oldingi yozuv tasdiqlanmagan |
 | ⚠️ Sinalmagan (sizning muhitingizda tekshiring) | Render deploy, haqiqiy webhook, haqiqiy Telegram xabarlari, **PostgreSQL** (kod yozilgan, lekin sinov SQLite'da o'tdi), gunicorn |
 | ⛔️ Ulanmagan | Click/Payme/Uzum kabi aniq to'lov provayderlari (merchant hisobi kerak). Hozir: qo'lda tasdiqlash + imzolangan `generic` webhook |
 | ℹ️ Cheklov | Poster/video Telegram file_id orqali; sayt faqat `https` tashqi havola (medium) ni o'ynatadi, High faqat botda |
