@@ -103,7 +103,7 @@ private val films = listOf(
 )
 
 @Composable
-private fun TilaKinoApp() {
+fun TilaKinoApp() {
     val context = LocalContext.current
     val preferences = remember { context.getSharedPreferences("tilakino_local", android.content.Context.MODE_PRIVATE) }
     var selectedTab by remember { mutableIntStateOf(0) }
