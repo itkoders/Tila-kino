@@ -80,7 +80,7 @@ class MainActivity : ComponentActivity() {
                 onBackground = Color.White,
                 onSurface = Color.White
             )) {
-                TilaKinoApp()
+                AuthGate()
             }
         }
     }
