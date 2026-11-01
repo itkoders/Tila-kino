@@ -1,6 +1,7 @@
 package com.itkoders.tilakino
 
 import android.os.Bundle
+import androidx.compose.ui.platform.LocalContext
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -103,9 +104,25 @@ private val films = listOf(
 
 @Composable
 private fun TilaKinoApp() {
+    val context = LocalContext.current
+    val preferences = remember { context.getSharedPreferences("tilakino_local", android.content.Context.MODE_PRIVATE) }
     var selectedTab by remember { mutableIntStateOf(0) }
     var query by remember { mutableStateOf("") }
     var selectedFilm by remember { mutableStateOf<Film?>(null) }
+    var favorites by remember {
+        mutableStateOf(preferences.getStringSet("favorite_titles", emptySet())?.toSet() ?: emptySet())
+    }
+    val toggleFavorite: (Film) -> Unit = { film ->
+        val updated = favorites.toMutableSet().apply {
+            if (contains(film.title)) remove(film.title) else add(film.title)
+        }.toSet()
+        favorites = updated
+        preferences.edit().putStringSet("favorite_titles", updated).apply()
+    }
+    val filteredFilms = films.filter { film ->
+        query.isBlank() || film.title.contains(query, ignoreCase = true) ||
+            film.genre.contains(query, ignoreCase = true) || film.year.contains(query)
+    }
 
     Scaffold(
         containerColor = Ink,
@@ -129,17 +146,18 @@ private fun TilaKinoApp() {
         }
     ) { padding ->
         if (selectedFilm != null) {
-            FilmDetails(film = selectedFilm!!, modifier = Modifier.padding(padding), onBack = { selectedFilm = null })
+            FilmDetails(film = selectedFilm!!, modifier = Modifier.padding(padding), isFavorite = selectedFilm!!.title in favorites, onFavorite = { toggleFavorite(selectedFilm!!) }, onBack = { selectedFilm = null })
         } else {
             when (selectedTab) {
                 0 -> HomeScreen(
                     modifier = Modifier.padding(padding),
                     query = query,
                     onQueryChange = { query = it },
-                    onFilmClick = { selectedFilm = it }
+                    onFilmClick = { selectedFilm = it },
+                    visibleFilms = filteredFilms
                 )
-                1 -> CatalogScreen(Modifier.padding(padding), onFilmClick = { selectedFilm = it })
-                2 -> SavedScreen(Modifier.padding(padding))
+                1 -> CatalogScreen(Modifier.padding(padding), onFilmClick = { selectedFilm = it }, visibleFilms = filteredFilms)
+                2 -> SavedScreen(Modifier.padding(padding), favorites = films.filter { it.title in favorites }, onFilmClick = { selectedFilm = it })
                 else -> ProfileScreen(Modifier.padding(padding))
             }
         }
@@ -151,7 +169,8 @@ private fun HomeScreen(
     modifier: Modifier = Modifier,
     query: String,
     onQueryChange: (String) -> Unit,
-    onFilmClick: (Film) -> Unit
+    onFilmClick: (Film) -> Unit,
+    visibleFilms: List<Film>
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -195,7 +214,7 @@ private fun HomeScreen(
             FilmSection(
                 title = "Bugun trendda",
                 subtitle = "Tomoshabinlar tanlovi",
-                list = films,
+                list = visibleFilms,
                 onFilmClick = onFilmClick
             )
         }
@@ -206,7 +225,7 @@ private fun HomeScreen(
             FilmSection(
                 title = "Siz uchun tanladik",
                 subtitle = "Yangi taassurotlar",
-                list = films.reversed(),
+                list = visibleFilms.reversed(),
                 onFilmClick = onFilmClick
             )
         }
@@ -325,11 +344,11 @@ private fun PremiumBanner() {
 }
 
 @Composable
-private fun CatalogScreen(modifier: Modifier, onFilmClick: (Film) -> Unit) {
+private fun CatalogScreen(modifier: Modifier, onFilmClick: (Film) -> Unit, visibleFilms: List<Film>) {
     LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
         item { Text("Katalog", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Black) }
         item { Text("Kino olamini kashf eting", color = Muted, fontSize = 13.sp) }
-        items(films) { film ->
+        items(visibleFilms) { film ->
             Row(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Panel)
                     .clickable { onFilmClick(film) }.padding(10.dp),
@@ -350,12 +369,30 @@ private fun CatalogScreen(modifier: Modifier, onFilmClick: (Film) -> Unit) {
 }
 
 @Composable
-private fun SavedScreen(modifier: Modifier) {
-    Box(modifier.fillMaxSize().padding(28.dp), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Icon(Icons.Filled.BookmarkBorder, contentDescription = null, tint = Gold, modifier = Modifier.size(48.dp))
-            Text("Saqlangan kinolar", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-            Text("Sevimli filmlaringiz shu yerda ko‘rinadi.", color = Muted, fontSize = 13.sp)
+private fun SavedScreen(modifier: Modifier, favorites: List<Film>, onFilmClick: (Film) -> Unit) {
+    if (favorites.isEmpty()) {
+        Box(modifier.fillMaxSize().padding(28.dp), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Icon(Icons.Filled.BookmarkBorder, contentDescription = null, tint = Gold, modifier = Modifier.size(48.dp))
+                Text("Saqlangan kinolar", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text("Hozircha sevimlilarga kino qo‘shilmagan.", color = Muted, fontSize = 13.sp)
+            }
+        }
+    } else {
+        LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item { Text("Sevimlilar", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Black) }
+            items(favorites) { film ->
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Panel).clickable { onFilmClick(film) }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(58.dp).clip(RoundedCornerShape(12.dp)).background(film.accent), contentAlignment = Alignment.Center) {
+                        Text(film.symbol, color = Color.White, fontSize = 26.sp)
+                    }
+                    Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                        Text(film.title, color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("${film.year} · ${film.genre}", color = Muted, fontSize = 11.sp)
+                    }
+                    Icon(Icons.Filled.BookmarkBorder, contentDescription = "Saqlangan", tint = Gold)
+                }
+            }
         }
     }
 }
@@ -382,7 +419,7 @@ private fun ProfileScreen(modifier: Modifier) {
 }
 
 @Composable
-private fun FilmDetails(film: Film, modifier: Modifier = Modifier, onBack: () -> Unit) {
+private fun FilmDetails(film: Film, modifier: Modifier = Modifier, isFavorite: Boolean, onFavorite: () -> Unit, onBack: () -> Unit) {
     Column(modifier.fillMaxSize()) {
         Box(
             modifier = Modifier.fillMaxWidth().height(300.dp)
@@ -394,6 +431,10 @@ private fun FilmDetails(film: Film, modifier: Modifier = Modifier, onBack: () ->
         }
         Column(modifier = Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(film.title, color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.Black)
+            Button(onClick = onFavorite, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Panel, contentColor = Gold), shape = RoundedCornerShape(14.dp)) {
+                Icon(Icons.Filled.BookmarkBorder, contentDescription = null)
+                Text(if (isFavorite) "  Sevimlilardan olib tashlash" else "  Sevimlilarga qo‘shish")
+            }
             Text("${film.year}  ·  ${film.genre}  ·  ★ ${film.rating}", color = Gold, fontSize = 12.sp)
             Text("Ushbu sahifada film tavsifi, aktyorlar, audio va subtitr tanlovi hamda tomosha qilish imkoniyati joylashadi. Haqiqiy katalog API ulangach ma'lumotlar serverdan olinadi.", color = Muted, fontSize = 13.sp, lineHeight = 20.sp)
             Button(onClick = { }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink), shape = RoundedCornerShape(14.dp)) {
