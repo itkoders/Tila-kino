@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    name: Build debug APK
+    name: Build debug APK and Firebase fingerprints
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -32,6 +32,9 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.13"
+
+      - name: Print Android signing fingerprints
+        run: gradle :app:signingReport --stacktrace
 
       - name: Build APK
         run: gradle assembleDebug --stacktrace
