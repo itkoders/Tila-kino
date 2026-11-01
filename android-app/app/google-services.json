@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "240693159471",
+    "project_id": "tilakino",
+    "storage_bucket": "tilakino.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:240693159471:android:8afcbbe9041c2dbe0e08da",
+        "android_client_info": {
+          "package_name": "com.itkoders.tilakino"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDs6uJxOqAyPCQksgrtI1frPR3cCRBBnf4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
