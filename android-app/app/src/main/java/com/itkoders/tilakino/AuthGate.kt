@@ -50,19 +50,23 @@ private val authBackdrops = listOf(
 @Composable
 fun AuthGate() {
     val auth = remember { FirebaseAuth.getInstance() }
-    var currentUser by remember { mutableStateOf(auth.currentUser) }
+    var currentUser by remember { mutableStateOf(auth.currentUser?.takeUnless { it.isAnonymous }) }
     DisposableEffect(auth) {
-        val listener = FirebaseAuth.AuthStateListener { currentUser = it.currentUser }
+        val listener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+            val user = firebaseAuth.currentUser
+            if (user?.isAnonymous == true) { firebaseAuth.signOut(); currentUser = null }
+            else currentUser = user
+        }
         auth.addAuthStateListener(listener)
         onDispose { auth.removeAuthStateListener(listener) }
     }
-    if (currentUser == null) AuthScreen(auth) else TilaKinoApp()
+    if (currentUser == null) AuthScreen(auth) else TilaKinoApp(currentUser?.email)
 }
 
 @Composable
 private fun AuthScreen(auth: FirebaseAuth) {
     val context = LocalContext.current
-    var register by remember { mutableStateOf(true) }
+    var register by remember { mutableStateOf(false) }
     var method by remember { mutableStateOf("email") }
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -98,7 +102,7 @@ private fun AuthScreen(auth: FirebaseAuth) {
             }
         } catch (e: Exception) {
             loading = false; error = true
-            message = if (e is ApiException && e.statusCode == 12501) "Google kirishi bekor qilindi." else "Google kirishi amalga oshmadi. Firebase sozlamasini tekshiring."
+            message = if (e is ApiException) "Google xatosi (${e.statusCode}). Firebase SHA-1/SHA-256 va Web client ID sozlamalarini tekshiring." else "Google kirishi amalga oshmadi: ${e.localizedMessage ?: "noma’lum xato"}"
         }
     }
 
@@ -234,7 +238,7 @@ private fun AuthScreen(auth: FirebaseAuth) {
                         Text("G", color = Color(0xFF4285F4), fontSize = 22.sp, fontWeight = FontWeight.Black)
                         Spacer(Modifier.width(10.dp)); Text("Google bilan davom etish", fontWeight = FontWeight.Bold)
                     }
-                    Text("Xavfsiz kirish • Mehmon rejimi yo‘q", color = AuthMuted, fontSize = 10.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                    Text("Xavfsiz kirish • Mehmon rejimi o‘chirilgan", color = AuthMuted, fontSize = 10.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
                 }
             }
             Spacer(Modifier.height(22.dp))
