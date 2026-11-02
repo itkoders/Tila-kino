@@ -144,7 +144,7 @@ private fun AuthScreen(auth: FirebaseAuth) {
     }
 
     Box(Modifier.fillMaxSize().background(AuthInk)) {
-        AnimatedContent(targetState = backdrop, transitionSpec = { androidx.compose.animation.fadeIn(tween(1100)) togetherWith androidx.compose.animation.fadeOut(tween(1100)) }, label = "cinema-backdrop") { index ->
+        AnimatedContent(targetState = backdrop, transitionSpec = { androidx.compose.animation.ContentTransform(androidx.compose.animation.fadeIn(tween(1100)), androidx.compose.animation.fadeOut(tween(1100))) }, label = "cinema-backdrop") { index ->
             AsyncImage(model = authBackdrops[index], contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         }
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xAA03050B), Color(0xCC050710), Color(0xFF050710)))))
