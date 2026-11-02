@@ -5,6 +5,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -94,6 +102,8 @@ private data class Film(
     val accent: Color,
     val symbol: String
 )
+
+private val heroImages = listOf("https://image.tmdb.org/t/p/w1280/8bcoR3h5q3SF0MzslsqM8DPyX.jpg", "https://image.tmdb.org/t/p/w1280/5hoS3nEkGGXUfmnu39AR3aev3b8.jpg", "https://image.tmdb.org/t/p/w1280/7RyHsO4yDXtBv1zUU3mTpHeQ0d5.jpg")
 
 private val films = listOf(
     Film("SO‘NGGI QAL’A", "Sarguzasht · Drama", "2026", "8.9", Color(0xFF315B78), "✦"),
@@ -234,38 +244,28 @@ private fun HomeScreen(
 
 @Composable
 private fun HeroBanner(onClick: () -> Unit) {
-    Box(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
-            .height(250.dp).clip(RoundedCornerShape(26.dp))
-            .background(Brush.linearGradient(listOf(Color(0xFF153C52), Color(0xFF17172C), Color(0xFF5C3927))))
-    ) {
-        Box(
-            modifier = Modifier.align(Alignment.TopEnd).padding(top = 24.dp, end = 26.dp)
-                .size(130.dp).clip(CircleShape)
-                .background(Brush.radialGradient(listOf(Color(0x66FFFFFF), Color.Transparent)))
-        )
-        Column(
-            modifier = Modifier.align(Alignment.BottomStart).padding(22.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+    var slide by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(5500)
+            slide = (slide + 1) % heroImages.size
+        }
+    }
+    Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(270.dp).clip(RoundedCornerShape(26.dp)).clickable(onClick = onClick)) {
+        AnimatedContent(slide, transitionSpec = { fadeIn(tween(900)) togetherWith fadeOut(tween(900)) }, label = "home-hero") { index ->
+            AsyncImage(model = heroImages[index], contentDescription = "Kino banneri", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        }
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xEE05070D)))))
+        Column(Modifier.align(Alignment.BottomStart).padding(20.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             Text("TILAKINO ORIGINAL", color = Cyan, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
-            Text("SO‘NGGI\nQAL’A", color = Color.White, fontSize = 34.sp, lineHeight = 35.sp, fontWeight = FontWeight.Black)
-            Text("2026  •  Fantastika  •  4K", color = Color.White.copy(alpha = 0.75f), fontSize = 11.sp)
-            Button(
-                onClick = onClick,
-                colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink),
-                shape = RoundedCornerShape(12.dp),
-                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 9.dp)
-            ) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = null)
-                Spacer(Modifier.width(6.dp))
-                Text("Tomosha qilish", fontWeight = FontWeight.Bold)
+            Text("KINO OLAMIGA XUSH KELIBSIZ", color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.Black)
+            Text("Har kuni yangi taassurotlar", color = Color.White.copy(alpha = .8f), fontSize = 11.sp)
+            Button(onClick = onClick, colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink), shape = RoundedCornerShape(12.dp)) {
+                Icon(Icons.Filled.PlayArrow, contentDescription = null); Spacer(Modifier.width(5.dp)); Text("Katalogni ko‘rish", fontWeight = FontWeight.Bold)
             }
         }
-        Text("01 / 05", modifier = Modifier.align(Alignment.TopStart).padding(18.dp), color = Color.White.copy(alpha = 0.7f), fontSize = 10.sp)
     }
 }
-
 @Composable
 private fun CategoryChips() {
     val categories = listOf("Hammasi", "Kino", "Serial", "Anime", "Multfilm")
