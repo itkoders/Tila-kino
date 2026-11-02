@@ -1,6 +1,11 @@
 package com.itkoders.tilakino
 
 import android.os.Bundle
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 import androidx.compose.ui.platform.LocalContext
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -100,23 +105,66 @@ private data class Film(
     val year: String,
     val rating: String,
     val accent: Color,
-    val symbol: String
+    val symbol: String,
+    val code: String = "",
+    val kind: String = "movie",
+    val description: String = "",
+    val posterUrl: String? = null
 )
 
 private val heroImages = listOf("https://image.tmdb.org/t/p/w1280/8bcoR3h5q3SF0MzslsqM8DPyX.jpg", "https://image.tmdb.org/t/p/w1280/5hoS3nEkGGXUfmnu39AR3aev3b8.jpg", "https://image.tmdb.org/t/p/w1280/7RyHsO4yDXtBv1zUU3mTpHeQ0d5.jpg")
 
-private val films = listOf(
-    Film("SO‘NGGI QAL’A", "Sarguzasht · Drama", "2026", "8.9", Color(0xFF315B78), "✦"),
-    Film("TUNGI SHAHAR", "Triller · Sirli", "2025", "8.5", Color(0xFF684A78), "◈"),
-    Film("YULDUZLAR ORTIDA", "Fantastika", "2026", "9.1", Color(0xFF246C72), "✧"),
-    Film("QORA IZ", "Jangari · Drama", "2024", "8.2", Color(0xFF80533B), "◆")
-)
+private val films = emptyList<Film>()
+
+
+private const val API_BASE_URL = "https://tilakino-telegram-bot.onrender.com"
+
+private suspend fun loadCatalog(search: String): List<Film> = withContext(Dispatchers.IO) {
+    val encoded = java.net.URLEncoder.encode(search, "UTF-8")
+    val endpoint = "$API_BASE_URL/api/catalog?page=0" + if (search.isBlank()) "" else "&q=$encoded"
+    val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+        requestMethod = "GET"
+        connectTimeout = 12000
+        readTimeout = 15000
+        setRequestProperty("Accept", "application/json")
+    }
+    try {
+        if (connection.responseCode !in 200..299) throw IllegalStateException("Server javobi: ${connection.responseCode}")
+        val body = connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+        val items = JSONObject(body).optJSONArray("items") ?: org.json.JSONArray()
+        buildList {
+            for (i in 0 until items.length()) {
+                val item = items.optJSONObject(i) ?: continue
+                val code = item.optString("code")
+                val kind = item.optString("kind", "movie")
+                val poster = item.optString("poster").takeIf { it.isNotBlank() && it != "null" }
+                add(Film(
+                    title = item.optString("title", "Nomsiz kino"),
+                    genre = item.optString("genre", "Janr ko‘rsatilmagan"),
+                    year = item.optString("year", ""),
+                    rating = item.optString("rating", "0"),
+                    accent = if (kind == "series") Color(0xFF315B78) else Color(0xFF684A78),
+                    symbol = if (kind == "series") "▶" else "✦",
+                    code = code,
+                    kind = kind,
+                    description = item.optString("description", ""),
+                    posterUrl = poster?.let { "$API_BASE_URL$it" }
+                ))
+            }
+        }
+    } finally {
+        connection.disconnect()
+    }
+}
 
 @Composable
 fun TilaKinoApp(userEmail: String?) {
     val context = LocalContext.current
     val preferences = remember { context.getSharedPreferences("tilakino_local", android.content.Context.MODE_PRIVATE) }
     var selectedTab by remember { mutableIntStateOf(0) }
+    var catalogFilms by remember { mutableStateOf(films) }
+    var catalogError by remember { mutableStateOf<String?>(null) }
+    var catalogLoading by remember { mutableStateOf(true) }
     var query by remember { mutableStateOf("") }
     var selectedFilm by remember { mutableStateOf<Film?>(null) }
     var favorites by remember {
@@ -129,10 +177,19 @@ fun TilaKinoApp(userEmail: String?) {
         favorites = updated
         preferences.edit().putStringSet("favorite_titles", updated).apply()
     }
-    val filteredFilms = films.filter { film ->
-        query.isBlank() || film.title.contains(query, ignoreCase = true) ||
-            film.genre.contains(query, ignoreCase = true) || film.year.contains(query)
+    LaunchedEffect(query) {
+        kotlinx.coroutines.delay(300)
+        catalogLoading = true
+        catalogError = null
+        try {
+            catalogFilms = loadCatalog(query)
+        } catch (e: Exception) {
+            catalogError = e.message ?: "Katalogni yuklab bo‘lmadi"
+        } finally {
+            catalogLoading = false
+        }
     }
+    val filteredFilms = catalogFilms
 
     Scaffold(
         containerColor = Ink,
@@ -167,7 +224,7 @@ fun TilaKinoApp(userEmail: String?) {
                     visibleFilms = filteredFilms
                 )
                 1 -> CatalogScreen(Modifier.padding(padding), onFilmClick = { selectedFilm = it }, visibleFilms = filteredFilms)
-                2 -> SavedScreen(Modifier.padding(padding), favorites = films.filter { it.title in favorites }, onFilmClick = { selectedFilm = it })
+                2 -> SavedScreen(Modifier.padding(padding), favorites = catalogFilms.filter { it.title in favorites }, onFilmClick = { selectedFilm = it })
                 else -> ProfileScreen(Modifier.padding(padding), userEmail = userEmail, onSignOut = { com.google.firebase.auth.FirebaseAuth.getInstance().signOut() })
             }
         }
@@ -215,7 +272,7 @@ private fun HomeScreen(
             )
         }
         item {
-            HeroBanner(onClick = { onFilmClick(films.first()) })
+            HeroBanner(onClick = { visibleFilms.firstOrNull()?.let(onFilmClick) })
         }
         item {
             CategoryChips()
@@ -312,7 +369,7 @@ private fun FilmPoster(film: Film, onClick: () -> Unit) {
             modifier = Modifier.fillMaxWidth().height(190.dp).clip(RoundedCornerShape(18.dp))
                 .background(Brush.linearGradient(listOf(film.accent, Color(0xFF111827), Ink)))
         ) {
-            Text(film.symbol, modifier = Modifier.align(Alignment.Center), color = Color.White.copy(alpha = 0.65f), fontSize = 64.sp)
+            if (film.posterUrl != null) AsyncImage(model = film.posterUrl, contentDescription = film.title, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) else Text(film.symbol, modifier = Modifier.align(Alignment.Center), color = Color.White.copy(alpha = 0.65f), fontSize = 64.sp)
             Surface(color = Color.Black.copy(alpha = 0.55f), shape = RoundedCornerShape(8.dp), modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
                 Row(modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.Star, contentDescription = null, tint = Gold, modifier = Modifier.size(12.dp))
@@ -355,7 +412,7 @@ private fun CatalogScreen(modifier: Modifier, onFilmClick: (Film) -> Unit, visib
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(Modifier.size(width = 76.dp, height = 96.dp).clip(RoundedCornerShape(12.dp)).background(film.accent), contentAlignment = Alignment.Center) {
-                    Text(film.symbol, color = Color.White, fontSize = 30.sp)
+                    if (film.posterUrl != null) AsyncImage(model = film.posterUrl, contentDescription = film.title, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) else Text(film.symbol, color = Color.White, fontSize = 30.sp)
                 }
                 Column(Modifier.weight(1f).padding(start = 13.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     Text(film.title, color = Color.White, fontWeight = FontWeight.Bold)
@@ -384,7 +441,7 @@ private fun SavedScreen(modifier: Modifier, favorites: List<Film>, onFilmClick: 
             items(favorites) { film ->
                 Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Panel).clickable { onFilmClick(film) }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(58.dp).clip(RoundedCornerShape(12.dp)).background(film.accent), contentAlignment = Alignment.Center) {
-                        Text(film.symbol, color = Color.White, fontSize = 26.sp)
+                        if (film.posterUrl != null) AsyncImage(model = film.posterUrl, contentDescription = film.title, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) else Text(film.symbol, color = Color.White, fontSize = 26.sp)
                     }
                     Column(Modifier.weight(1f).padding(start = 12.dp)) {
                         Text(film.title, color = Color.White, fontWeight = FontWeight.Bold)
@@ -461,7 +518,8 @@ private fun FilmDetails(
         }
         Text(film.title, color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.Black)
         Text(film.genre, color = Cyan, fontSize = 13.sp)
-        Text("Ushbu film haqida ma’lumot va tomosha qilish havolasi katalog serveriga ulanmagan.", color = Muted, fontSize = 13.sp)
+        Text(if (film.description.isBlank()) "Tavsif mavjud emas." else film.description, color = Muted, fontSize = 13.sp)
+        Text("Kino kodi: ${film.code}", color = Gold, fontSize = 12.sp)
         Button(
             onClick = onFavorite,
             modifier = Modifier.fillMaxWidth(),
