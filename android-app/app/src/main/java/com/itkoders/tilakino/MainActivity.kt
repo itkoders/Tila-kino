@@ -426,3 +426,50 @@ private fun ProfileScreen(modifier: Modifier, userEmail: String?, onSignOut: () 
         Text("Ilova versiyasi: 1.0.0", color = Muted, fontSize = 12.sp)
     }
 }
+
+
+@Composable
+private fun FilmDetails(
+    film: Film,
+    modifier: Modifier = Modifier,
+    isFavorite: Boolean,
+    onFavorite: () -> Unit,
+    onBack: () -> Unit
+) {
+    Column(
+        modifier = modifier.fillMaxSize().background(Ink).padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("‹  Orqaga", color = Gold, modifier = Modifier.clickable(onClick = onBack), fontWeight = FontWeight.Bold)
+            Spacer(Modifier.weight(1f))
+            Text("TILAKINO", color = Gold, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+        }
+        Box(
+            Modifier.fillMaxWidth().height(250.dp).clip(RoundedCornerShape(22.dp))
+                .background(Brush.linearGradient(listOf(film.accent, Panel, Ink))),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(film.symbol, color = Color.White, fontSize = 88.sp, fontWeight = FontWeight.Black)
+            Surface(
+                color = Color(0xCC080B12),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.align(Alignment.BottomStart).padding(12.dp)
+            ) {
+                Text("★ ${film.rating}  •  ${film.year}", color = Gold, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), fontSize = 12.sp)
+            }
+        }
+        Text(film.title, color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.Black)
+        Text(film.genre, color = Cyan, fontSize = 13.sp)
+        Text("Ushbu film haqida ma’lumot va tomosha qilish havolasi katalog serveriga ulanmagan.", color = Muted, fontSize = 13.sp)
+        Button(
+            onClick = onFavorite,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = if (isFavorite) Panel else Gold, contentColor = if (isFavorite) Gold else Ink)
+        ) {
+            Icon(Icons.Filled.BookmarkBorder, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text(if (isFavorite) "Saqlanganlardan olib tashlash" else "Sevimlilarga qo‘shish")
+        }
+    }
+}
