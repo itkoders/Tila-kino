@@ -39,7 +39,7 @@ private val AuthInk = Color(0xFF070912)
 private val AuthGold = Color(0xFFFFC247)
 private val AuthMuted = Color(0xFFD0D3DC)
 private val authBackdrops = listOf(
-    "https://image.tmdb.org/t/p/w1280/8bcoR3h5q3SF0MzslsqM8DPyX明.jpg",
+    "https://image.tmdb.org/t/p/w1280/8bcoR3h5q3SF0MzslsqM8DPyX.jpg",
     "https://image.tmdb.org/t/p/w1280/5hoS3nEkGGXUfmnu39AR3aev3b8.jpg",
     "https://image.tmdb.org/t/p/w1280/7RyHsO4yDXtBv1zUU3mTpHeQ0d5.jpg",
     "https://image.tmdb.org/t/p/w1280/2u7zbn8EudG6kLlBzUYqP8Hj8x.jpg"
