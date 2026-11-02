@@ -113,7 +113,7 @@ private val films = listOf(
 )
 
 @Composable
-fun TilaKinoApp() {
+fun TilaKinoApp(userEmail: String?) {
     val context = LocalContext.current
     val preferences = remember { context.getSharedPreferences("tilakino_local", android.content.Context.MODE_PRIVATE) }
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -168,7 +168,7 @@ fun TilaKinoApp() {
                 )
                 1 -> CatalogScreen(Modifier.padding(padding), onFilmClick = { selectedFilm = it }, visibleFilms = filteredFilms)
                 2 -> SavedScreen(Modifier.padding(padding), favorites = films.filter { it.title in favorites }, onFilmClick = { selectedFilm = it })
-                else -> ProfileScreen(Modifier.padding(padding))
+                else -> ProfileScreen(Modifier.padding(padding), userEmail = userEmail, onSignOut = { com.google.firebase.auth.FirebaseAuth.getInstance().signOut() })
             }
         }
     }
@@ -398,49 +398,31 @@ private fun SavedScreen(modifier: Modifier, favorites: List<Film>, onFilmClick: 
 }
 
 @Composable
-private fun ProfileScreen(modifier: Modifier) {
+private fun ProfileScreen(modifier: Modifier, userEmail: String?, onSignOut: () -> Unit) {
+    val isAdmin = userEmail.equals("berdiqulv@gmail.com", ignoreCase = true)
     Column(modifier.fillMaxSize().padding(22.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Text("Profil", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Black)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
             Surface(shape = CircleShape, color = Panel, modifier = Modifier.size(58.dp)) {
                 Box(contentAlignment = Alignment.Center) { Icon(Icons.Filled.Person, contentDescription = null, tint = Gold, modifier = Modifier.size(30.dp)) }
             }
-            Column {
-                Text("Mehmon foydalanuvchi", color = Color.White, fontWeight = FontWeight.Bold)
-                Text("TILAKINO hisobiga kiring", color = Muted, fontSize = 12.sp)
+            Column(Modifier.weight(1f)) {
+                Text(userEmail ?: "TILAKINO foydalanuvchisi", color = Color.White, fontWeight = FontWeight.Bold)
+                Text(if (isAdmin) "ADMINISTRATOR" else "Faol hisob", color = if (isAdmin) Gold else Muted, fontSize = 12.sp)
             }
         }
-        Button(onClick = { }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink)) {
-            Text("Kirish / Ro‘yxatdan o‘tish")
+        if (isAdmin) {
+            Surface(color = Color(0xFF302515), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("ADMIN HISOBI", color = Gold, fontWeight = FontWeight.Black)
+                    Text("Administrator email tanildi. Boshqaruv serveri va xavfsiz admin ruxsatlari hali alohida sozlanishi kerak.", color = Color.White, fontSize = 12.sp)
+                }
+            }
+        }
+        Button(onClick = onSignOut, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink)) {
+            Text("Hisobdan chiqish")
         }
         Text("Til: O‘zbekcha", color = Color.White)
         Text("Ilova versiyasi: 1.0.0", color = Muted, fontSize = 12.sp)
-    }
-}
-
-@Composable
-private fun FilmDetails(film: Film, modifier: Modifier = Modifier, isFavorite: Boolean, onFavorite: () -> Unit, onBack: () -> Unit) {
-    Column(modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier.fillMaxWidth().height(300.dp)
-                .background(Brush.linearGradient(listOf(film.accent, Color(0xFF17172C), Ink)))
-        ) {
-            Text("‹  Orqaga", modifier = Modifier.align(Alignment.TopStart).padding(20.dp).clickable { onBack() }, color = Color.White, fontSize = 15.sp)
-            Text(film.symbol, modifier = Modifier.align(Alignment.Center), color = Color.White.copy(alpha = 0.65f), fontSize = 100.sp)
-            Text("TILAKINO SELECTION", modifier = Modifier.align(Alignment.BottomStart).padding(22.dp), color = Cyan, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
-        }
-        Column(modifier = Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(film.title, color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.Black)
-            Button(onClick = onFavorite, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Panel, contentColor = Gold), shape = RoundedCornerShape(14.dp)) {
-                Icon(Icons.Filled.BookmarkBorder, contentDescription = null)
-                Text(if (isFavorite) "  Sevimlilardan olib tashlash" else "  Sevimlilarga qo‘shish")
-            }
-            Text("${film.year}  ·  ${film.genre}  ·  ★ ${film.rating}", color = Gold, fontSize = 12.sp)
-            Text("Ushbu sahifada film tavsifi, aktyorlar, audio va subtitr tanlovi hamda tomosha qilish imkoniyati joylashadi. Haqiqiy katalog API ulangach ma'lumotlar serverdan olinadi.", color = Muted, fontSize = 13.sp, lineHeight = 20.sp)
-            Button(onClick = { }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink), shape = RoundedCornerShape(14.dp)) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = null)
-                Text("  Tomosha qilish")
-            }
-        }
     }
 }
